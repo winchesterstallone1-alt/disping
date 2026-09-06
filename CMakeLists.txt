@@ -43,6 +43,8 @@ set(COMMON_SOURCES
     src/ui_console.cpp
     src/benchmark_runner.cpp
     src/vpn_guard.cpp
+    src/hardware_detector.cpp
+    src/disping_asm_dispatch.cpp
 )
 
 # Main Executable

@@ -1,5 +1,6 @@
 #include "process_optimizer.hpp"
 #include "vpn_guard.hpp"
+#include "hardware_detector.hpp"
 #include <tlhelp32.h>
 #include <iostream>
 #include <sstream>
@@ -79,21 +80,8 @@ std::vector<RunningProcessInfo> ProcessOptimizer::FindActiveGames() {
 }
 
 DWORD_PTR ProcessOptimizer::GetPhysicalCoresAffinityMask() const {
-    SYSTEM_INFO sysInfo;
-    GetSystemInfo(&sysInfo);
-    DWORD numCores = sysInfo.dwNumberOfProcessors;
-
-    if (numCores <= 2) {
-        return (1ULL << numCores) - 1; // All cores if <= 2
-    }
-
-    // Isolate Core 0 (which handles Windows DPCs, IRQs, OS scheduling)
-    // Dedicate Cores 1..N-1 exclusively to game threads
-    DWORD_PTR mask = 0;
-    for (DWORD i = 1; i < numCores; ++i) {
-        mask |= (1ULL << i);
-    }
-    return mask;
+    auto profile = HardwareDetector::DetectHardware();
+    return profile.optimalGameAffinityMask;
 }
 
 OperationResult ProcessOptimizer::BoostProcess(DWORD pid, bool pinToPerformanceCores) {

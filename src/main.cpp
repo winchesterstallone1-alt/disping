@@ -14,6 +14,7 @@
 #include "disping_asm.h"
 #include "benchmark_runner.hpp"
 #include "vpn_guard.hpp"
+#include "hardware_detector.hpp"
 
 #include <iostream>
 #include <string>
@@ -34,38 +35,55 @@ void ExecuteExtremeBoost(
 {
     UIConsole::PrintHeader("APPLYING 1-CLICK EXTREME GAMING BOOST");
 
+    // 0. Hardware Detection & Architecture Profiling
+    auto prof = HardwareDetector::DetectHardware();
+    std::cout << "[0/7] Hardware Profile: " << prof.cpuBrand << "\n";
+    std::cout << "      Architecture Tier: " << HardwareDetector::GetIsaTierDescription(prof) 
+              << " | RAM: " << prof.totalRamGb << " GB\n";
+    if (prof.isHybrid) {
+        std::cout << "      [Intel Hybrid] " << prof.pCoreCount << " P-Cores + " << prof.eCoreCount 
+                  << " E-Cores detected. Games will be pinned exclusively to P-Cores.\n";
+    } else if (prof.isAmdX3D) {
+        std::cout << "      [AMD 3D V-Cache] X3D processor detected. Games will be pinned to V-Cache CCD.\n";
+    }
+
     // 1. Create backup first
     backupMgr.CreateBackup();
 
     // 2. Network Tweaks
-    std::cout << "[1/6] Applying TCP/IP Stack & Zero-Jitter Optimizations...\n";
+    std::cout << "\n[1/7] Applying TCP/IP Stack & Zero-Jitter Optimizations...\n";
     auto r1 = netOpt.ApplyAllNetworkTweaks();
     UIConsole::PrintOperationResult(r1);
 
     // 3. Adapter Hardware
-    std::cout << "\n[2/6] Tuning Network Adapter (Interrupt Moderation, Buffers, LSO)...\n";
+    std::cout << "\n[2/7] Tuning Network Adapter (Interrupt Moderation, Buffers, LSO)...\n";
     auto r2 = adaptOpt.OptimizeAllNetworkAdapters();
     UIConsole::PrintOperationResult(r2);
 
     // 4. Timer Resolution & MMCSS
-    std::cout << "\n[3/6] Locking OS High-Resolution Timer (0.500 ms) & MMCSS Games Profile...\n";
+    std::cout << "\n[3/7] Locking OS High-Resolution Timer (0.500 ms) & MMCSS Games Profile...\n";
     auto r3 = latencyOpt.SetHighResolutionTimer(0.5);
     auto r3b = latencyOpt.OptimizeMMCSSGamesProfile();
     UIConsole::PrintOperationResult(r3);
     UIConsole::PrintOperationResult(r3b);
 
-    // 5. QoS Packet Prioritization
-    std::cout << "\n[4/6] Setting up DSCP 46 (Expedited Forwarding) Gaming QoS Policies...\n";
+    // 5. Memory Subsystem (Locks Windows kernel & drivers in RAM for >=16GB RAM)
+    std::cout << "\n[4/7] Tuning Windows Memory Subsystem (Disable Paging Executive)...\n";
+    auto r_mem = latencyOpt.OptimizeMemorySubsystem(prof.isHighRam);
+    UIConsole::PrintOperationResult(r_mem);
+
+    // 6. QoS Packet Prioritization
+    std::cout << "\n[5/7] Setting up DSCP 46 (Expedited Forwarding) Gaming QoS Policies...\n";
     auto r4 = qosOpt.SetupGamingQoSPolicies();
     UIConsole::PrintOperationResult(r4);
 
-    // 6. Memory Cleaner
-    std::cout << "\n[5/6] Purging Standby Memory Cache & Working Sets...\n";
+    // 7. Memory Cleaner
+    std::cout << "\n[6/7] Purging Standby Memory Cache & Working Sets...\n";
     auto r5 = memOpt.CleanGamingMemory();
     UIConsole::PrintOperationResult(r5);
 
-    // 7. Active Games Boost
-    std::cout << "\n[6/6] Scanning & Boosting Running Game Processes...\n";
+    // 8. Active Games Boost
+    std::cout << "\n[7/7] Scanning & Boosting Running Game Processes (Affinity Pinning)...\n";
     auto r6 = procOpt.AutoBoostAllActiveGames();
     UIConsole::PrintOperationResult(r6);
 
@@ -187,6 +205,12 @@ int main(int argc, char* argv[]) {
         }
         else if (arg == "--vpn-check" || arg == "--check-vpn" || arg == "--vpn") {
             VpnGuard::PrintVpnShieldStatus();
+            WSACleanup();
+            return 0;
+        }
+        else if (arg == "--hardware" || arg == "-hw") {
+            auto prof = HardwareDetector::DetectHardware();
+            HardwareDetector::PrintHardwareReport(prof);
             WSACleanup();
             return 0;
         }
@@ -424,6 +448,14 @@ int main(int argc, char* argv[]) {
             case 'v':
             case 'V': {
                 VpnGuard::PrintVpnShieldStatus();
+                std::cout << "\nPress any key to return to menu...";
+                _getch();
+                break;
+            }
+            case 'h':
+            case 'H': {
+                auto prof = HardwareDetector::DetectHardware();
+                HardwareDetector::PrintHardwareReport(prof);
                 std::cout << "\nPress any key to return to menu...";
                 _getch();
                 break;

@@ -11,6 +11,7 @@
 #include "ping_monitor.hpp"
 #include "process_optimizer.hpp"
 #include "mtu_optimizer.hpp"
+#include "hardware_detector.hpp"
 
 using namespace disping;
 
@@ -174,6 +175,57 @@ void Test_LocalPing() {
     (void)rtt;
 }
 
+void Test_HardwareDetector() {
+    HardwareProfile prof = HardwareDetector::DetectHardware();
+    assert(!prof.cpuBrand.empty());
+    assert(prof.logicalCores >= 1);
+    assert(prof.physicalCores >= 1);
+    assert(prof.logicalCores >= prof.physicalCores);
+    assert(prof.totalRamBytes > 0);
+    assert(prof.optimalGameAffinityMask != 0);
+
+    std::string tier = HardwareDetector::GetIsaTierDescription(prof);
+    assert(!tier.empty());
+}
+
+void Test_DynamicIsaDispatch() {
+    // 1. Checksum through dynamic dispatch
+    uint8_t buf[256];
+    for (size_t i = 0; i < sizeof(buf); i++) buf[i] = (uint8_t)(i & 0xFF);
+    uint16_t cs_auto = disping_fast_checksum_auto(buf, sizeof(buf));
+    uint16_t cs_ref = asm_fast_checksum_x64(buf, sizeof(buf));
+    assert(cs_auto == cs_ref);
+
+    // 2. Memzero through dynamic dispatch
+    uint8_t mem[512];
+    std::memset(mem, 0xAA, sizeof(mem));
+    disping_fast_memzero_auto(mem, sizeof(mem));
+    for (size_t i = 0; i < sizeof(mem); i++) {
+        assert(mem[i] == 0);
+    }
+
+    // 3. TSC reading through dynamic dispatch
+    uint64_t t1 = disping_read_tsc_auto();
+    uint64_t t2 = disping_read_tsc_auto();
+    assert(t2 >= t1);
+}
+
+void Test_UniversalFallbackSse2() {
+    // Test SSE2 universal fallback directly (runs on all x86_64 CPUs since 2003)
+    uint8_t buf[128];
+    for (size_t i = 0; i < sizeof(buf); i++) buf[i] = (uint8_t)(i + 1);
+    uint16_t cs_sse2 = asm_sse2_checksum(buf, sizeof(buf));
+    uint16_t cs_ref = asm_fast_checksum_x64(buf, sizeof(buf));
+    assert(cs_sse2 == cs_ref);
+
+    uint8_t mem[256];
+    std::memset(mem, 0xFF, sizeof(mem));
+    asm_sse2_memzero_nt(mem, sizeof(mem));
+    for (size_t i = 0; i < sizeof(mem); i++) {
+        assert(mem[i] == 0);
+    }
+}
+
 int main() {
     WSADATA wsa;
     WSAStartup(MAKEWORD(2, 2), &wsa);
@@ -196,6 +248,9 @@ int main() {
     RUN_TEST(Test_SparklineGeneration);
     RUN_TEST(Test_ProcessAffinityMaskCalculation);
     RUN_TEST(Test_LocalPing);
+    RUN_TEST(Test_HardwareDetector);
+    RUN_TEST(Test_DynamicIsaDispatch);
+    RUN_TEST(Test_UniversalFallbackSse2);
 
     std::cout << "\n----------------------------------------\n";
     std::cout << "Tests Summary: Passed = " << g_passedTests 

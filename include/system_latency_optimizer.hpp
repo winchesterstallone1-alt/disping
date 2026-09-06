@@ -24,6 +24,9 @@ public:
     // Configure MMCSS Games profile in registry
     OperationResult OptimizeMMCSSGamesProfile();
 
+    // Hardware-adapted memory management (DisablePagingExecutive for >= 16GB RAM)
+    OperationResult OptimizeMemorySubsystem(bool isHighRam);
+
     // Keep the timer locked in background until StopTimerDaemon()
     void StartTimerDaemon(double targetMs = 0.5);
     void StopTimerDaemon();

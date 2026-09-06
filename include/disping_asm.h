@@ -45,8 +45,20 @@ void asm_calc_ping_stats_simd(
 // RFC 3550 jitter calculation in SIMD: J(i) = J(i-1) + (|D| - J(i-1)) / 16.0
 double asm_calc_jitter_rfc3550(double current_jitter, double transit_diff);
 
-// Sub-microsecond spin wait without OS thread context switch
+// Assembly high-precision spin wait in CPU cycles
 void asm_spin_wait_ns(uint64_t target_cycles);
+
+// SSE2 universal fallbacks (100% compatible with ANY x86-64 CPU since 2003)
+uint16_t asm_sse2_checksum(const void* buffer, size_t len_bytes);
+void asm_sse2_memzero_nt(void* dst, size_t size_in_bytes);
+
+// -----------------------------------------------------------------------------
+// Universal Dynamic Dispatchers: Automatically chooses the highest supported ISA
+// (AVX2 -> SSE4.2 -> SSE2) without crashing on older/budget hardware!
+// -----------------------------------------------------------------------------
+uint16_t disping_fast_checksum_auto(const void* buffer, size_t len_bytes);
+void disping_fast_memzero_auto(void* dst, size_t size_in_bytes);
+uint64_t disping_read_tsc_auto(void);
 
 #ifdef __cplusplus
 }

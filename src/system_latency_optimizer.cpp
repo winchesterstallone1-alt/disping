@@ -119,6 +119,32 @@ OperationResult SystemLatencyOptimizer::OptimizeMMCSSGamesProfile() {
     return res;
 }
 
+OperationResult SystemLatencyOptimizer::OptimizeMemorySubsystem(bool isHighRam) {
+    OperationResult res;
+    if (!RegistryUtil::IsRunningAsAdmin()) {
+        res.success = false;
+        res.message = "Administrator privileges required.";
+        return res;
+    }
+
+    std::string mmKey = "SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Memory Management";
+
+    if (isHighRam) {
+        // High RAM (>= 16GB): Keep Windows kernel and drivers permanently resident in physical RAM
+        RegistryUtil::SetDword(HKEY_LOCAL_MACHINE, mmKey, "DisablePagingExecutive", 1);
+        RegistryUtil::SetDword(HKEY_LOCAL_MACHINE, mmKey, "LargeSystemCache", 0);
+        res.message = "Configured High-RAM Gaming Profile: Kernel locked in physical RAM (DisablePagingExecutive=1).";
+    } else {
+        // Budget RAM (<= 8GB): Keep balanced paging to prevent memory exhaustion
+        RegistryUtil::SetDword(HKEY_LOCAL_MACHINE, mmKey, "DisablePagingExecutive", 0);
+        RegistryUtil::SetDword(HKEY_LOCAL_MACHINE, mmKey, "LargeSystemCache", 0);
+        res.message = "Configured Budget-RAM Gaming Profile: Balanced paging executive.";
+    }
+
+    res.success = true;
+    return res;
+}
+
 void SystemLatencyOptimizer::StartTimerDaemon(double targetMs) {
     if (m_daemonRunning.load()) {
         return;

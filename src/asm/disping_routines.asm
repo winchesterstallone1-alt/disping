@@ -522,3 +522,137 @@ asm_spin_wait_ns:
     cmp rax, rcx
     jb .spin_loop
     ret
+
+; ------------------------------------------------------------------------------
+; uint16_t asm_sse2_checksum(const void* buffer, size_t len_bytes)
+; Universal fallback checksum running on ANY x86-64 processor
+; ------------------------------------------------------------------------------
+global asm_sse2_checksum
+asm_sse2_checksum:
+    xor eax, eax
+    test rcx, rcx
+    jz .ret_sse2_zero
+    test rdx, rdx
+    jz .ret_sse2_zero
+
+    xor r8, r8          ; accumulator
+    clc
+
+.loop_sse2_32:
+    cmp rdx, 32
+    jb .loop_sse2_8
+    mov r9, [rcx]
+    adc r8, r9
+    mov r9, [rcx + 8]
+    adc r8, r9
+    mov r9, [rcx + 16]
+    adc r8, r9
+    mov r9, [rcx + 24]
+    adc r8, r9
+    adc r8, 0
+
+    add rcx, 32
+    sub rdx, 32
+    jnz .loop_sse2_32
+
+.loop_sse2_8:
+    cmp rdx, 8
+    jb .loop_sse2_2
+    mov r9, [rcx]
+    adc r8, r9
+    adc r8, 0
+    add rcx, 8
+    sub rdx, 8
+    jmp .loop_sse2_8
+
+.loop_sse2_2:
+    cmp rdx, 2
+    jb .loop_sse2_1
+    movzx r9d, word [rcx]
+    adc r8, r9
+    adc r8, 0
+    add rcx, 2
+    sub rdx, 2
+    jmp .loop_sse2_2
+
+.loop_sse2_1:
+    cmp rdx, 1
+    jb .fold_sse2
+    movzx r9d, byte [rcx]
+    shl r9d, 8
+    adc r8, r9
+    adc r8, 0
+
+.fold_sse2:
+    mov rax, r8
+    shr rax, 32
+    add eax, r8d
+    adc eax, 0
+
+    mov edx, eax
+    shr edx, 16
+    add ax, dx
+    adc ax, 0
+
+    not ax
+    movzx eax, ax
+    ret
+
+.ret_sse2_zero:
+    xor eax, eax
+    ret
+
+; ------------------------------------------------------------------------------
+; void asm_sse2_memzero_nt(void* dst, size_t size_in_bytes)
+; 128-bit SSE2 non-temporal stores running on ANY x86-64 processor
+; ------------------------------------------------------------------------------
+global asm_sse2_memzero_nt
+asm_sse2_memzero_nt:
+    test rcx, rcx
+    jz .mz_sse2_done
+    test rdx, rdx
+    jz .mz_sse2_done
+
+    pxor xmm0, xmm0
+
+.align_16:
+    test rcx, 15
+    jz .loop_sse2_64
+    test rdx, rdx
+    jz .mz_sse2_done
+    mov byte [rcx], 0
+    inc rcx
+    dec rdx
+    jmp .align_16
+
+.loop_sse2_64:
+    cmp rdx, 64
+    jb .tail_sse2
+    movntdq [rcx], xmm0
+    movntdq [rcx + 16], xmm0
+    movntdq [rcx + 32], xmm0
+    movntdq [rcx + 48], xmm0
+    add rcx, 64
+    sub rdx, 64
+    jmp .loop_sse2_64
+
+.tail_sse2:
+    cmp rdx, 16
+    jb .tail_bytes_sse2
+    movntdq [rcx], xmm0
+    add rcx, 16
+    sub rdx, 16
+    jmp .tail_sse2
+
+.tail_bytes_sse2:
+    test rdx, rdx
+    jz .mz_sse2_finish
+    mov byte [rcx], 0
+    inc rcx
+    dec rdx
+    jmp .tail_bytes_sse2
+
+.mz_sse2_finish:
+    sfence
+.mz_sse2_done:
+    ret

@@ -55,6 +55,10 @@
 | **Memory Cleaner**| `src/memory_optimizer.cpp`, `include/memory_optimizer.hpp` | Очистка Standby List и рабочих наборов памяти |
 | **Ping & Jitter** | `src/ping_monitor.cpp`, `include/ping_monitor.hpp` | Микросекундный ICMP/UDP мониторинг пинга и джиттера с визуализацией |
 | **UDP Proxy** | `src/udp_proxy.cpp`, `include/udp_proxy.hpp` | Локальный быстрый UDP сокетный туннель с повышенным приоритетом сокетов |
+| **Hardware Detector** | `src/hardware_detector.cpp`, `include/hardware_detector.hpp` | Детектирование Intel Hybrid (P/E-ядра), AMD X3D, наборов ISA, RAM и адаптивная маска аффинити |
+| **ASM Dispatcher** | `src/disping_asm_dispatch.cpp`, `include/disping_asm.h` | Динамическая диспетчеризация инструкций CPU (AVX2 -> SSE4.2 -> SSE2 fallback) |
+| **VPN Guard** | `src/vpn_guard.cpp`, `include/vpn_guard.hpp` | Защита от конфликтов с VPN и DPI обходами (Zapret winws, Incy, Happ, Wintun) |
+| **Benchmark Runner** | `src/benchmark_runner.cpp`, `include/benchmark_runner.hpp` | Автоматизированный бенчмарк сравнения реальных характеристик ДО и ПОСЛЕ |
 | **Backup & Restore**| `src/backup_manager.cpp`, `include/backup_manager.hpp` | Снятие бэкапа реестра/netsh, экспорт в json/bat, откат к стандарту |
 | **UI & CLI** | `src/ui_console.cpp`, `include/ui_console.hpp`, `src/main.cpp` | Консольный интерфейс с ANSI цветами, меню и параметрами командной строки |
 
