@@ -99,9 +99,31 @@ OperationResult MemoryOptimizer::EmptyAllWorkingSets() {
             
             std::wstring ws(pe.szExeFile);
             std::string exeName(ws.begin(), ws.end());
+            std::string lowerExe = exeName;
+            std::transform(lowerExe.begin(), lowerExe.end(), lowerExe.begin(), ::tolower);
 
             // PROTECT VPN & DPI BYPASS: Never flush working sets of Zapret (winws), Incy, Happ, etc.
-            if (VpnGuard::IsProcessProtected(exeName)) {
+            if (VpnGuard::IsProcessProtected(lowerExe)) {
+                continue;
+            }
+
+            // PROTECT STEAM, DISCORD, GPU DRIVERS & GAMING PROCESSES:
+            // Flushing working sets on Chromium/CEF (steamwebhelper, discord) or games (cs2.exe)
+            // evicts GPU textures and causes STATUS_DRIVER_CANCELLED crashes!
+            static const std::vector<std::string> s_gamingProtected = {
+                "steam.exe", "steamwebhelper.exe", "steamservice.exe", "gameoverlayui.exe",
+                "cs2.exe", "csgo.exe", "valorant.exe", "dota2.exe", "r5apex.exe",
+                "discord.exe", "epicgameslauncher.exe", "riotclientservices.exe",
+                "nvcontainer.exe", "amdrsserv.exe", "amdfendrs.exe", "dwmp.exe", "dwm.exe"
+            };
+            bool skipGaming = false;
+            for (const auto& gp : s_gamingProtected) {
+                if (lowerExe == gp) {
+                    skipGaming = true;
+                    break;
+                }
+            }
+            if (skipGaming) {
                 continue;
             }
 
