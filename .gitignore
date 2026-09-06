@@ -1,0 +1,17 @@
+# Build artifacts
+build/
+bin/
+*.obj
+*.o
+*.exe
+*.log
+
+# Backup and temporary files
+disping_backup.json
+disping_rollback.bat
+
+# IDE and editors
+.vscode/
+.idea/
+*.user
+*.suo

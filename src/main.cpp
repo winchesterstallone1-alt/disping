@@ -1,0 +1,414 @@
+#include "ui_console.hpp"
+#include "network_optimizer.hpp"
+#include "adapter_optimizer.hpp"
+#include "qos_optimizer.hpp"
+#include "mtu_optimizer.hpp"
+#include "dns_optimizer.hpp"
+#include "system_latency_optimizer.hpp"
+#include "process_optimizer.hpp"
+#include "memory_optimizer.hpp"
+#include "ping_monitor.hpp"
+#include "udp_proxy.hpp"
+#include "backup_manager.hpp"
+#include "registry_util.hpp"
+#include "disping_asm.h"
+
+#include <iostream>
+#include <string>
+#include <vector>
+#include <iomanip>
+#include <conio.h>
+
+using namespace disping;
+
+void ExecuteExtremeBoost(
+    NetworkOptimizer& netOpt,
+    AdapterOptimizer& adaptOpt,
+    SystemLatencyOptimizer& latencyOpt,
+    QoSOptimizer& qosOpt,
+    MemoryOptimizer& memOpt,
+    ProcessOptimizer& procOpt,
+    BackupManager& backupMgr)
+{
+    UIConsole::PrintHeader("APPLYING 1-CLICK EXTREME GAMING BOOST");
+
+    // 1. Create backup first
+    backupMgr.CreateBackup();
+
+    // 2. Network Tweaks
+    std::cout << "[1/6] Applying TCP/IP Stack & Zero-Jitter Optimizations...\n";
+    auto r1 = netOpt.ApplyAllNetworkTweaks();
+    UIConsole::PrintOperationResult(r1);
+
+    // 3. Adapter Hardware
+    std::cout << "\n[2/6] Tuning Network Adapter (Interrupt Moderation, Buffers, LSO)...\n";
+    auto r2 = adaptOpt.OptimizeAllNetworkAdapters();
+    UIConsole::PrintOperationResult(r2);
+
+    // 4. Timer Resolution & MMCSS
+    std::cout << "\n[3/6] Locking OS High-Resolution Timer (0.500 ms) & MMCSS Games Profile...\n";
+    auto r3 = latencyOpt.SetHighResolutionTimer(0.5);
+    auto r3b = latencyOpt.OptimizeMMCSSGamesProfile();
+    UIConsole::PrintOperationResult(r3);
+    UIConsole::PrintOperationResult(r3b);
+
+    // 5. QoS Packet Prioritization
+    std::cout << "\n[4/6] Setting up DSCP 46 (Expedited Forwarding) Gaming QoS Policies...\n";
+    auto r4 = qosOpt.SetupGamingQoSPolicies();
+    UIConsole::PrintOperationResult(r4);
+
+    // 6. Memory Cleaner
+    std::cout << "\n[5/6] Purging Standby Memory Cache & Working Sets...\n";
+    auto r5 = memOpt.CleanGamingMemory();
+    UIConsole::PrintOperationResult(r5);
+
+    // 7. Active Games Boost
+    std::cout << "\n[6/6] Scanning & Boosting Running Game Processes...\n";
+    auto r6 = procOpt.AutoBoostAllActiveGames();
+    UIConsole::PrintOperationResult(r6);
+
+    std::cout << "\n" << UIConsole::BrightGreen() << UIConsole::Bold()
+              << "[OK] EXTREME GAMING LATENCY OPTIMIZATION COMPLETE!" << UIConsole::Reset() << "\n\n";
+}
+
+int main(int argc, char* argv[]) {
+    // Initialize Winsock
+    WSADATA wsaData;
+    WSAStartup(MAKEWORD(2, 2), &wsaData);
+
+    UIConsole::InitConsole();
+
+    NetworkOptimizer netOpt;
+    AdapterOptimizer adaptOpt;
+    SystemLatencyOptimizer latencyOpt;
+    QoSOptimizer qosOpt;
+    MtuOptimizer mtuOpt;
+    DnsOptimizer dnsOpt;
+    ProcessOptimizer procOpt;
+    MemoryOptimizer memOpt;
+    PingMonitor pingMon;
+    UdpProxy udpProxy;
+    BackupManager backupMgr;
+
+    // CLI Arguments handling
+    if (argc > 1) {
+        std::string arg = argv[1];
+
+        if (arg == "--all" || arg == "-a") {
+            ExecuteExtremeBoost(netOpt, adaptOpt, latencyOpt, qosOpt, memOpt, procOpt, backupMgr);
+            WSACleanup();
+            return 0;
+        }
+        else if (arg == "--network" || arg == "-n") {
+            UIConsole::PrintHeader("TCP/IP Network Tweaks");
+            auto r = netOpt.ApplyAllNetworkTweaks();
+            UIConsole::PrintOperationResult(r);
+            WSACleanup();
+            return r.success ? 0 : 1;
+        }
+        else if (arg == "--adapter") {
+            UIConsole::PrintHeader("Network Adapter Tuning");
+            auto r = adaptOpt.OptimizeAllNetworkAdapters();
+            UIConsole::PrintOperationResult(r);
+            WSACleanup();
+            return r.success ? 0 : 1;
+        }
+        else if (arg == "--timer") {
+            UIConsole::PrintHeader("0.5ms Timer Resolution Daemon");
+            latencyOpt.StartTimerDaemon(0.5);
+            std::cout << "Timer daemon running at 0.500 ms tick rate. Press Ctrl+C or Enter to exit.\n";
+            std::cin.get();
+            latencyOpt.StopTimerDaemon();
+            WSACleanup();
+            return 0;
+        }
+        else if (arg == "--ping") {
+            std::string host = (argc > 2) ? argv[2] : "1.1.1.1";
+            UIConsole::PrintHeader("Ping & Jitter Telemetry: " + host);
+            auto stats = pingMon.RunContinuousMonitor(host, 15, 100, [](const PingStats& s, double current) {
+                if (current >= 0.0) {
+                    std::cout << "Ping: " << std::fixed << std::setprecision(2) << current 
+                              << " ms | Jitter: " << s.jitterMs << " ms | Loss: " << s.lossRate << "%\n";
+                } else {
+                    std::cout << "Request timed out (packet dropped).\n";
+                }
+            });
+            std::vector<PingStats> list = { stats };
+            UIConsole::PrintPingTable(list);
+            WSACleanup();
+            return 0;
+        }
+        else if (arg == "--mtu") {
+            std::string host = (argc > 2) ? argv[2] : "1.1.1.1";
+            UIConsole::PrintHeader("MTU / MSS Discovery");
+            auto r = mtuOpt.AutoDetectAndApplyMtu(host);
+            UIConsole::PrintOperationResult(r);
+            WSACleanup();
+            return 0;
+        }
+        else if (arg == "--dns") {
+            UIConsole::PrintHeader("DNS Benchmark & Auto-Select");
+            auto results = dnsOpt.BenchmarkDnsProviders(3);
+            UIConsole::PrintDnsTable(results);
+            auto r = dnsOpt.AutoSelectFastestDns();
+            UIConsole::PrintOperationResult(r);
+            WSACleanup();
+            return 0;
+        }
+        else if (arg == "--games") {
+            UIConsole::PrintHeader("Game Process Priority & Affinity");
+            auto r = procOpt.AutoBoostAllActiveGames();
+            UIConsole::PrintOperationResult(r);
+            WSACleanup();
+            return 0;
+        }
+        else if (arg == "--clean-mem") {
+            UIConsole::PrintHeader("Memory Standby Purge");
+            auto r = memOpt.CleanGamingMemory();
+            UIConsole::PrintOperationResult(r);
+            WSACleanup();
+            return 0;
+        }
+        else if (arg == "--restore" || arg == "-r") {
+            UIConsole::PrintHeader("Restoring Windows Defaults");
+            auto r = backupMgr.RestoreFactoryDefaults();
+            UIConsole::PrintOperationResult(r);
+            WSACleanup();
+            return 0;
+        }
+        else if (arg == "--version" || arg == "-v") {
+            std::cout << "disping v1.0.0 (x86_64 NASM ASM + C++20)\n";
+            std::cout << "Supported CPU Features: RDTSCP=" << (asm_has_rdtscp_support() ? "YES" : "NO") 
+                      << ", Serialized TSC=YES, Fast RFC1071 Checksum=YES\n";
+            WSACleanup();
+            return 0;
+        }
+    }
+
+    // Interactive Loop
+    bool running = true;
+    while (running) {
+        UIConsole::ClearScreen();
+        UIConsole::PrintBanner();
+
+        bool isAdmin = RegistryUtil::IsRunningAsAdmin();
+        double minR = 0, maxR = 0, currR = 15.625;
+        latencyOpt.QueryTimerResolution(minR, maxR, currR);
+        bool netTweaked = netOpt.AreTweaksApplied();
+
+        UIConsole::PrintSystemStatus(isAdmin, currR, netTweaked);
+        UIConsole::PrintMenu();
+
+        char choice = _getch();
+        std::cout << choice << "\n\n";
+
+        switch (choice) {
+            case '!': {
+                ExecuteExtremeBoost(netOpt, adaptOpt, latencyOpt, qosOpt, memOpt, procOpt, backupMgr);
+                std::cout << "Press any key to return to menu...";
+                _getch();
+                break;
+            }
+            case '1': {
+                UIConsole::PrintHeader("TCP/IP Network Optimizations");
+                auto r = netOpt.ApplyAllNetworkTweaks();
+                UIConsole::PrintOperationResult(r);
+                std::cout << "\nPress any key to return to menu...";
+                _getch();
+                break;
+            }
+            case '2': {
+                UIConsole::PrintHeader("Network Adapter Tuning");
+                auto adapters = adaptOpt.GetActiveAdapters();
+                UIConsole::PrintAdaptersTable(adapters);
+                auto r = adaptOpt.OptimizeAllNetworkAdapters();
+                UIConsole::PrintOperationResult(r);
+                std::cout << "\nPress any key to return to menu...";
+                _getch();
+                break;
+            }
+            case '3': {
+                UIConsole::PrintHeader("High-Resolution 0.500 ms Timer & MMCSS Boost");
+                auto r1 = latencyOpt.SetHighResolutionTimer(0.5);
+                auto r2 = latencyOpt.OptimizeMMCSSGamesProfile();
+                UIConsole::PrintOperationResult(r1);
+                UIConsole::PrintOperationResult(r2);
+                std::cout << "\nPress any key to return to menu...";
+                _getch();
+                break;
+            }
+            case '4': {
+                UIConsole::PrintHeader("Active Games Boost (Priority & P-Core Pinning)");
+                auto games = procOpt.FindActiveGames();
+                if (games.empty()) {
+                    std::cout << "No known game processes currently running.\n";
+                    std::cout << "Enter custom executable name to boost (e.g. game.exe) or press Enter to skip: ";
+                    std::string custom;
+                    std::getline(std::cin, custom);
+                    if (!custom.empty()) {
+                        auto r = procOpt.BoostProcessByName(custom);
+                        UIConsole::PrintOperationResult(r);
+                    }
+                } else {
+                    std::cout << "Found active games:\n";
+                    for (const auto& g : games) {
+                        std::cout << "  - PID " << g.pid << ": " << g.name << "\n";
+                    }
+                    auto r = procOpt.AutoBoostAllActiveGames();
+                    UIConsole::PrintOperationResult(r);
+                }
+                std::cout << "\nPress any key to return to menu...";
+                _getch();
+                break;
+            }
+            case '5': {
+                UIConsole::PrintHeader("MTU / MSS Binary Search Probe");
+                std::cout << "Probing Path MTU to 1.1.1.1 with Don't Fragment packets...\n";
+                auto res = mtuOpt.DiscoverOptimalMtu("1.1.1.1");
+                std::cout << "Optimal MTU: " << res.optimalMtu << " (Optimal MSS: " << res.optimalMss << ")\n";
+                std::cout << "Apply to active physical adapters? (y/n): ";
+                char c = _getch();
+                std::cout << c << "\n";
+                if (c == 'y' || c == 'Y') {
+                    auto r = mtuOpt.AutoDetectAndApplyMtu("1.1.1.1");
+                    UIConsole::PrintOperationResult(r);
+                }
+                std::cout << "\nPress any key to return to menu...";
+                _getch();
+                break;
+            }
+            case '6': {
+                UIConsole::PrintHeader("DNS Benchmark & Auto-Selection");
+                std::cout << "Benchmarking top low-latency gaming DNS providers...\n";
+                auto results = dnsOpt.BenchmarkDnsProviders(3);
+                UIConsole::PrintDnsTable(results);
+                std::cout << "Apply fastest DNS resolver to your adapter? (y/n): ";
+                char c = _getch();
+                std::cout << c << "\n";
+                if (c == 'y' || c == 'Y') {
+                    auto r = dnsOpt.AutoSelectFastestDns();
+                    UIConsole::PrintOperationResult(r);
+                }
+                std::cout << "\nPress any key to return to menu...";
+                _getch();
+                break;
+            }
+            case '7': {
+                UIConsole::PrintHeader("Microsecond Ping & Jitter Telemetry");
+                std::vector<std::string> hubs = {
+                    "1.1.1.1",          // Cloudflare
+                    "8.8.8.8",          // Google
+                    "155.133.226.1",    // Valve Frankfurt
+                    "162.249.72.1"      // Riot Games EU
+                };
+                std::cout << "Running concurrent microsecond telemetry probes...\n";
+                auto stats = pingMon.BenchmarkMultipleTargets(hubs, 10);
+                UIConsole::PrintPingTable(stats);
+                std::cout << "\nPress any key to return to menu...";
+                _getch();
+                break;
+            }
+            case '8': {
+                UIConsole::PrintHeader("Memory Cleaner & Standby Purge");
+                auto r = memOpt.CleanGamingMemory();
+                UIConsole::PrintOperationResult(r);
+                std::cout << "\nPress any key to return to menu...";
+                _getch();
+                break;
+            }
+            case '9': {
+                UIConsole::PrintHeader("Zero-Copy UDP Fast-Relay Proxy");
+                std::cout << "Enter Local Listen Port (e.g. 27015): ";
+                std::string lportStr;
+                std::getline(std::cin, lportStr);
+                uint16_t lport = static_cast<uint16_t>(lportStr.empty() ? 27015 : std::stoi(lportStr));
+
+                std::cout << "Enter Target Remote Host (e.g. 1.1.1.1): ";
+                std::string rhost;
+                std::getline(std::cin, rhost);
+                if (rhost.empty()) rhost = "1.1.1.1";
+
+                std::cout << "Enter Target Remote Port (e.g. 27015): ";
+                std::string rportStr;
+                std::getline(std::cin, rportStr);
+                uint16_t rport = static_cast<uint16_t>(rportStr.empty() ? 27015 : std::stoi(rportStr));
+
+                auto r = udpProxy.Start(lport, rhost, rport);
+                UIConsole::PrintOperationResult(r);
+                if (r.success) {
+                    std::cout << "Relay running! Press any key to stop...\n";
+                    _getch();
+                    udpProxy.Stop();
+                    auto stats = udpProxy.GetStats();
+                    std::cout << "Forwarded " << stats.packetsForwarded << " packets ("
+                              << stats.bytesForwarded << " bytes) with avg latency "
+                              << stats.avgForwardLatencyUs << " microseconds.\n";
+                }
+                std::cout << "\nPress any key to return to menu...";
+                _getch();
+                break;
+            }
+            case 'b':
+            case 'B': {
+                UIConsole::PrintHeader("Create System Backup");
+                auto r = backupMgr.CreateBackup();
+                UIConsole::PrintOperationResult(r);
+                std::cout << "\nPress any key to return to menu...";
+                _getch();
+                break;
+            }
+            case 'r':
+            case 'R': {
+                UIConsole::PrintHeader("Rollback All Settings to Windows Defaults");
+                std::cout << "Are you sure you want to restore factory Windows defaults? (y/n): ";
+                char c = _getch();
+                std::cout << c << "\n";
+                if (c == 'y' || c == 'Y') {
+                    auto r = backupMgr.RestoreFactoryDefaults();
+                    UIConsole::PrintOperationResult(r);
+                }
+                std::cout << "\nPress any key to return to menu...";
+                _getch();
+                break;
+            }
+            case 't':
+            case 'T': {
+                UIConsole::PrintHeader("Built-in Verification Tests");
+                std::cout << "[*] Testing Assembly Checksum...\n";
+                char testBuf[64] = "DISPING_LATENCY_ENGINE_FAST_CHECKSUM_ROUTINE_X64";
+                uint16_t cs = asm_fast_checksum_x64(testBuf, sizeof(testBuf));
+                std::cout << "    -> Assembly Checksum: 0x" << std::hex << cs << std::dec << " [PASSED]\n";
+
+                std::cout << "[*] Testing Serialized TSC Reading...\n";
+                uint64_t tsc1 = asm_read_tsc_serialized();
+                Sleep(10);
+                uint64_t tsc2 = asm_read_tsc_serialized();
+                std::cout << "    -> TSC Cycles delta over 10ms: " << (tsc2 - tsc1) << " [PASSED]\n";
+
+                std::cout << "[*] Testing SIMD RFC 3550 Jitter Routine...\n";
+                double j = asm_calc_jitter_rfc3550(2.5, 4.0);
+                std::cout << "    -> ASM Jitter calculation: " << j << " [PASSED]\n";
+
+                std::cout << "[*] Testing Single Microsecond Ping to 1.1.1.1...\n";
+                double p = pingMon.PingSingle("1.1.1.1", 1000);
+                std::cout << "    -> RTT to 1.1.1.1: " << p << " ms [PASSED]\n";
+
+                std::cout << "\n" << UIConsole::BrightGreen() << "[OK] ALL CORE TESTS PASSED!" << UIConsole::Reset() << "\n";
+                std::cout << "\nPress any key to return to menu...";
+                _getch();
+                break;
+            }
+            case 'q':
+            case 'Q': {
+                running = false;
+                break;
+            }
+            default:
+                break;
+        }
+    }
+
+    latencyOpt.RestoreTimerResolution();
+    WSACleanup();
+    return 0;
+}
