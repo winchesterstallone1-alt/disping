@@ -52,7 +52,7 @@ bool PlatformHealer::RepairActiveProcessRegistry() {
         return false; // Already clean
     }
 
-    // Check if the process exists
+    // Check if the process exists and is actively running
     HANDLE hProc = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, activePid);
     bool shouldReset = false;
 
@@ -60,15 +60,27 @@ bool PlatformHealer::RepairActiveProcessRegistry() {
         // PID does not exist in the system (stale dead PID)
         shouldReset = true;
     } else {
-        // PID exists: verify if it's actually steam.exe
-        char exePath[MAX_PATH] = {0};
-        DWORD size = MAX_PATH;
-        if (QueryFullProcessImageNameA(hProc, 0, exePath, &size)) {
-            std::string sName = exePath;
-            std::string lower = sName;
-            std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
-            if (lower.find("steam.exe") == std::string::npos) {
-                // Not steam.exe, stale PID assigned to another process
+        DWORD exitCode = 0;
+        if (GetExitCodeProcess(hProc, &exitCode)) {
+            if (exitCode != STILL_ACTIVE) {
+                // Process has terminated (ghost handle)
+                shouldReset = true;
+            }
+        }
+
+        if (!shouldReset) {
+            char exePath[MAX_PATH] = {0};
+            DWORD size = MAX_PATH;
+            if (QueryFullProcessImageNameA(hProc, 0, exePath, &size)) {
+                std::string sName = exePath;
+                std::string lower = sName;
+                std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+                if (lower.find("steam.exe") == std::string::npos) {
+                    // Not steam.exe, stale PID assigned to another process
+                    shouldReset = true;
+                }
+            } else {
+                // Cannot query image name -> dead/inaccessible process
                 shouldReset = true;
             }
         }
