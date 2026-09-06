@@ -42,6 +42,7 @@ set(COMMON_SOURCES
     src/backup_manager.cpp
     src/ui_console.cpp
     src/benchmark_runner.cpp
+    src/vpn_guard.cpp
 )
 
 # Main Executable

@@ -1,4 +1,5 @@
 #include "memory_optimizer.hpp"
+#include "vpn_guard.hpp"
 #include <windows.h>
 #include <psapi.h>
 #include <tlhelp32.h>
@@ -95,6 +96,15 @@ OperationResult MemoryOptimizer::EmptyAllWorkingSets() {
     if (Process32FirstW(hSnapshot, &pe)) {
         do {
             if (pe.th32ProcessID == 0 || pe.th32ProcessID == 4) continue; // Skip System
+            
+            std::wstring ws(pe.szExeFile);
+            std::string exeName(ws.begin(), ws.end());
+
+            // PROTECT VPN & DPI BYPASS: Never flush working sets of Zapret (winws), Incy, Happ, etc.
+            if (VpnGuard::IsProcessProtected(exeName)) {
+                continue;
+            }
+
             HANDLE hProc = OpenProcess(PROCESS_SET_QUOTA | PROCESS_QUERY_INFORMATION, FALSE, pe.th32ProcessID);
             if (hProc) {
                 if (EmptyWorkingSet(hProc)) {

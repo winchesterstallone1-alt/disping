@@ -27,7 +27,7 @@ public:
 
     // Visual elements
     static void PrintBanner();
-    static void PrintSystemStatus(bool isAdmin, double timerMs, bool netTweaked);
+    static void PrintSystemStatus(bool isAdmin, double timerMs, bool netTweaked, bool vpnShieldActive = false);
     static void PrintMenu();
     static void PrintPingTable(const std::vector<PingStats>& stats);
     static void PrintDnsTable(const std::vector<DnsBenchmarkResult>& dnsList);

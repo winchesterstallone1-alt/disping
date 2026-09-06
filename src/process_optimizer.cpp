@@ -1,4 +1,5 @@
 #include "process_optimizer.hpp"
+#include "vpn_guard.hpp"
 #include <tlhelp32.h>
 #include <iostream>
 #include <sstream>
@@ -130,6 +131,14 @@ OperationResult ProcessOptimizer::BoostProcess(DWORD pid, bool pinToPerformanceC
 
 OperationResult ProcessOptimizer::BoostProcessByName(const std::string& processName, bool pinToPerformanceCores) {
     OperationResult res;
+
+    // PROTECT VPN: Never modify priority or pin cores for VPN services
+    if (VpnGuard::IsProcessProtected(processName)) {
+        res.success = false;
+        res.message = "[VPN SHIELD] Process [" + processName + "] is a protected VPN / DPI bypass service. Modified affinity skipped for stability.";
+        return res;
+    }
+
     HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
     if (hSnapshot == INVALID_HANDLE_VALUE) {
         res.success = false;

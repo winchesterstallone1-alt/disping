@@ -50,11 +50,12 @@ void UIConsole::PrintBanner() {
     std::cout << "  -----------------------------------------------------------------------\n";
 }
 
-void UIConsole::PrintSystemStatus(bool isAdmin, double timerMs, bool netTweaked) {
+void UIConsole::PrintSystemStatus(bool isAdmin, double timerMs, bool netTweaked, bool vpnShieldActive) {
     std::cout << "  [System Status]\n";
     std::cout << "  * Privileges:        " << (isAdmin ? (BrightGreen() + "[ADMINISTRATOR]" + Reset()) : (Red() + "[LIMITED USER - Run as Admin!]" + Reset())) << "\n";
     std::cout << "  * OS Timer Rate:     " << (timerMs <= 1.0 ? BrightGreen() : Yellow()) << std::fixed << std::setprecision(3) << timerMs << " ms" << Reset() << "\n";
     std::cout << "  * Network Tweaks:    " << (netTweaked ? (BrightGreen() + "[ACTIVE - MAXIMUM PRIORITY]" + Reset()) : (Yellow() + "[DEFAULT / NOT APPLIED]" + Reset())) << "\n";
+    std::cout << "  * VPN & DPI Shield:  " << (vpnShieldActive ? (BrightGreen() + "[ACTIVE - Zapret/Incy/Happ PROTECTED]" + Reset()) : (White() + "[IDLE - No VPN Running]" + Reset())) << "\n";
     std::cout << "  -----------------------------------------------------------------------\n";
 }
 
@@ -74,8 +75,9 @@ void UIConsole::PrintMenu() {
     std::cout << "   " << BrightYellow()<< "[R]" << Reset() << " Restore Original Windows Defaults (Safe Rollback)\n";
     std::cout << "   " << Magenta()     << "[T]" << Reset() << " Run Built-in Automated Verification Tests\n";
     std::cout << "   " << BrightGreen() << "[C]" << Reset() << " Run Real-World Benchmark (Compare BEFORE vs AFTER)\n";
+    std::cout << "   " << BrightCyan()  << "[V]" << Reset() << " View VPN & DPI Shield Status (Zapret, Incy, Happ, Wintun)\n";
     std::cout << "   " << Red()         << "[Q]" << Reset() << " Exit disping\n\n";
-    std::cout << Bold() << "  Select an option [!/1-9/B/R/T/C/Q]: " << Reset() << std::flush;
+    std::cout << Bold() << "  Select an option [!/1-9/B/R/T/C/V/Q]: " << Reset() << std::flush;
 }
 
 void UIConsole::PrintHeader(const std::string& title) {

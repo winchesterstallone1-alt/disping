@@ -1,5 +1,6 @@
 #include "dns_optimizer.hpp"
 #include "adapter_optimizer.hpp"
+#include "vpn_guard.hpp"
 #include <winsock2.h>
 #include <windows.h>
 #include <ws2tcpip.h>
@@ -139,6 +140,13 @@ std::vector<DnsBenchmarkResult> DnsOptimizer::BenchmarkDnsProviders(int iteratio
 
 OperationResult DnsOptimizer::SetDnsServers(const std::string& interfaceName, const std::string& primary, const std::string& secondary) {
     OperationResult res;
+
+    // PROTECT VPN: Never touch DNS on virtual/TUN adapters
+    if (VpnGuard::IsVirtualOrVpnAdapter(interfaceName, "")) {
+        res.success = false;
+        res.message = "[VPN SHIELD] Skipped DNS change on virtual/TUN adapter: " + interfaceName;
+        return res;
+    }
     
     std::stringstream ss1;
     ss1 << "cmd.exe /c \"netsh interface ipv4 set dnsservers name=\\\"" << interfaceName << "\\\" static " << primary << " primary\" > nul 2>&1";
@@ -170,6 +178,14 @@ OperationResult DnsOptimizer::FlushDnsCache() {
 }
 
 OperationResult DnsOptimizer::AutoSelectFastestDns() {
+    // CRITICAL VPN PROTECTION: If Incy, Happ, Zapret, or Fake-IP DNS is running, NEVER override DNS!
+    if (VpnGuard::IsVpnOrDpiBypassActive() || VpnGuard::HasFakeIpOrVpnDns()) {
+        OperationResult r;
+        r.success = true;
+        r.message = "[VPN SHIELD ACTIVE] Detected active VPN / DPI bypass / Fake-IP DNS (Incy/Happ/Zapret/198.18.x.x). DNS modification SKIPPED to guarantee 100% VPN stability!";
+        return r;
+    }
+
     auto results = BenchmarkDnsProviders(3);
     if (results.empty() || !results[0].reachable) {
         OperationResult r;

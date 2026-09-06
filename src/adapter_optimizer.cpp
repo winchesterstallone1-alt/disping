@@ -6,6 +6,7 @@
 
 #include "adapter_optimizer.hpp"
 #include "registry_util.hpp"
+#include "vpn_guard.hpp"
 #include <iostream>
 #include <iomanip>
 #include <sstream>
@@ -80,7 +81,10 @@ std::vector<NetworkAdapterInfo> AdapterOptimizer::GetActiveAdapters() {
 
             info.mtu = pCurr->Mtu;
             info.speedMbps = static_cast<uint32_t>(pCurr->TransmitLinkSpeed / 1000000ULL);
-            info.isPhysical = (pCurr->IfType == IF_TYPE_ETHERNET_CSMACD || pCurr->IfType == IF_TYPE_IEEE80211);
+            
+            // PROTECT VPN & TUN: Ensure virtual, TUN, and TAP adapters are NEVER treated as physical
+            bool isVirtual = VpnGuard::IsVirtualOrVpnAdapter(info.name, info.description);
+            info.isPhysical = (pCurr->IfType == IF_TYPE_ETHERNET_CSMACD || pCurr->IfType == IF_TYPE_IEEE80211) && !isVirtual;
             info.isConnected = true;
 
             list.push_back(info);
@@ -99,6 +103,10 @@ std::vector<std::string> AdapterOptimizer::GetAdapterClassKeys() const {
         std::string fullKey = rootClass + "\\" + sk;
         std::string driverDesc;
         if (RegistryUtil::GetString(HKEY_LOCAL_MACHINE, fullKey, "DriverDesc", driverDesc)) {
+            // PROTECT VPN: NEVER touch driver properties of Wintun, TAP, or virtual VPN interfaces
+            if (VpnGuard::IsVirtualOrVpnAdapter("", driverDesc)) {
+                continue;
+            }
             validAdapters.push_back(fullKey);
         }
     }

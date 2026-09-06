@@ -95,6 +95,7 @@ disping/
 │   ├── ping_monitor.hpp          # Микросекундная телеметрия пинга и RFC3550 джиттера
 │   ├── udp_proxy.hpp             # Быстрый zero-loss UDP ретранслятор
 │   ├── backup_manager.hpp        # Бэкап и откат до заводских настроек
+│   ├── vpn_guard.hpp             # Щит совместимости с VPN, Zapret, Incy, Happ
 │   └── ui_console.hpp            # ANSI-интерфейс, таблицы, спарклайны
 ├── src/                          # Исходный код C++20
 │   ├── main.cpp                  # Точка входа, CLI парсер и главное меню
@@ -110,6 +111,8 @@ disping/
 │   ├── ping_monitor.cpp
 │   ├── udp_proxy.cpp
 │   ├── backup_manager.cpp
+│   ├── benchmark_runner.cpp
+│   ├── vpn_guard.cpp
 │   ├── ui_console.cpp
 │   └── asm/                      # Ассемблерные модули (NASM x86_64)
 │       └── disping_routines.asm  # SIMD / Checksum / TSC / NT-Memzero
@@ -213,8 +216,19 @@ Tests Summary: Passed = 8, Failed = 0
 | `disping.exe --dns` | Замер задержек DNS и переключение на самый быстрый |
 | `disping.exe --games` | Сканирование и буст приоритета/ядер активных игр |
 | `disping.exe --clean-mem`| Очистка кэша Standby List и выгрузка памяти процессов |
-| `disping.exe --restore` | Полный возврат системы к стандартным параметрам Windows |
-| `disping.exe --version` | Сведения о версии и поддержке инструкций процессора |
+| `disping.exe --compare`  | Запуск бенчмарка реальных тестов (сравнение ДО и ПОСЛЕ)|
+| `disping.exe --vpn-check`| Проверка статуса Щита Совместимости с VPN/DPI |
+| `disping.exe --restore`  | Полный возврат системы к стандартным параметрам Windows |
+| `disping.exe --version`  | Сведения о версии и поддержке инструкций процессора |
+
+---
+
+## 🛡 100% Совместимость с Zapret, VPN, Incy и Happ (VPN Shield)
+
+DisPing оснащён встроенным **Щитом Совместимости (`VpnGuard`)**, гарантирующим, что утилита никогда не сломает ваш VPN или средства обхода DPI:
+* **Защита DNS прокси (Fake-IP)**: Если запущен Incy, Happ, Sing-box или обнаружен Fake-IP DNS (`198.18.0.2` / `127.0.0.1`), DisPing **автоматически пропускает** изменение DNS, сохраняя работоспособность туннеля.
+* **Иммунитет процессов WinDivert и VPN**: Очиститель памяти (`--clean-mem`) никогда не сбрасывает рабочие наборы памяти `winws.exe`, `happd.exe`, `incy.exe`, `sing-box.exe`, `goodbyedpi.exe` и др., защищая очередь пакетов WinDivert от переполнения и разрыва соединения.
+* **Изоляция виртуальных адаптеров**: Аппаратные твики сетевых плат и MTU применяются **исключительно к физическим сетевым картам** (Ethernet / Wi-Fi) и никогда не трогают виртуальные туннели `Wintun`, `wwan99`, `TAP` или `WireGuard`.
 
 ---
 

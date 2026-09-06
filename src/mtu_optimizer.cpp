@@ -1,5 +1,6 @@
 #include "mtu_optimizer.hpp"
 #include "adapter_optimizer.hpp"
+#include "vpn_guard.hpp"
 #include <winsock2.h>
 #include <windows.h>
 #include <iphlpapi.h>
@@ -120,8 +121,15 @@ MtuResult MtuOptimizer::DiscoverOptimalMtu(const std::string& targetHost) {
 
 OperationResult MtuOptimizer::ApplyMtuToInterface(const std::string& interfaceName, uint32_t mtu) {
     OperationResult res;
+
+    // PROTECT VPN: Never change MTU on virtual / TUN / Wintun adapters
+    if (VpnGuard::IsVirtualOrVpnAdapter(interfaceName, "")) {
+        res.success = false;
+        res.message = "[VPN SHIELD] Skipped MTU change on virtual/TUN adapter: " + interfaceName;
+        return res;
+    }
+
     std::stringstream ss;
-    // For cmd.exe system(), enclose entire command line in quotes if quotes are used internally
     ss << "cmd.exe /c \"netsh interface ipv4 set subinterface \\\"" << interfaceName << "\\\" mtu=" << mtu << " store=persistent\" > nul 2>&1";
     
     std::string cmd = ss.str();

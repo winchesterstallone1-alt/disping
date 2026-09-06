@@ -13,6 +13,7 @@
 #include "registry_util.hpp"
 #include "disping_asm.h"
 #include "benchmark_runner.hpp"
+#include "vpn_guard.hpp"
 
 #include <iostream>
 #include <string>
@@ -184,6 +185,11 @@ int main(int argc, char* argv[]) {
             WSACleanup();
             return 0;
         }
+        else if (arg == "--vpn-check" || arg == "--check-vpn" || arg == "--vpn") {
+            VpnGuard::PrintVpnShieldStatus();
+            WSACleanup();
+            return 0;
+        }
         else if (arg == "--version" || arg == "-v") {
             std::cout << "disping v1.0.0 (x86_64 NASM ASM + C++20)\n";
             std::cout << "Supported CPU Features: RDTSCP=" << (asm_has_rdtscp_support() ? "YES" : "NO") 
@@ -203,8 +209,9 @@ int main(int argc, char* argv[]) {
         double minR = 0, maxR = 0, currR = 15.625;
         latencyOpt.QueryTimerResolution(minR, maxR, currR);
         bool netTweaked = netOpt.AreTweaksApplied();
+        bool vpnShield = VpnGuard::IsVpnOrDpiBypassActive();
 
-        UIConsole::PrintSystemStatus(isAdmin, currR, netTweaked);
+        UIConsole::PrintSystemStatus(isAdmin, currR, netTweaked, vpnShield);
         UIConsole::PrintMenu();
 
         char choice = _getch();
@@ -410,6 +417,13 @@ int main(int argc, char* argv[]) {
             case 'C': {
                 BenchmarkRunner bench;
                 bench.RunComparisonBenchmark("192.168.31.1");
+                std::cout << "\nPress any key to return to menu...";
+                _getch();
+                break;
+            }
+            case 'v':
+            case 'V': {
+                VpnGuard::PrintVpnShieldStatus();
                 std::cout << "\nPress any key to return to menu...";
                 _getch();
                 break;
