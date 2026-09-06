@@ -77,8 +77,9 @@ void UIConsole::PrintMenu() {
     std::cout << "   " << BrightGreen() << "[C]" << Reset() << " Run Real-World Benchmark (Compare BEFORE vs AFTER)\n";
     std::cout << "   " << BrightCyan()  << "[V]" << Reset() << " View VPN & DPI Shield Status (Zapret, Incy, Happ, Wintun)\n";
     std::cout << "   " << BrightCyan()  << "[H]" << Reset() << " Universal Hardware Profiler (Intel Hybrid, AMD X3D, ISA & RAM Tier)\n";
+    std::cout << "   " << BrightGreen() << "[S]" << Reset() << " View Live System Status (Registry, Timer, MMCSS, Hardware)\n";
     std::cout << "   " << Red()         << "[Q]" << Reset() << " Exit disping\n\n";
-    std::cout << Bold() << "  Select an option [!/1-9/B/R/T/C/V/H/Q]: " << Reset() << std::flush;
+    std::cout << Bold() << "  Select an option [!/1-9/B/R/T/C/V/H/S/Q]: " << Reset() << std::flush;
 }
 
 void UIConsole::PrintHeader(const std::string& title) {

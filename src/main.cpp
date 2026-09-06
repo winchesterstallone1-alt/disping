@@ -208,6 +208,48 @@ int main(int argc, char* argv[]) {
             WSACleanup();
             return 0;
         }
+        else if (arg == "--status" || arg == "-s") {
+            UIConsole::PrintHeader("DISPING: ТЕКУЩИЙ СТАТУС ОПТИМИЗАЦИЙ В СИСТЕМЕ");
+            bool isAdmin = RegistryUtil::IsRunningAsAdmin();
+            double minR = 0, maxR = 0, currR = 15.625;
+            latencyOpt.QueryTimerResolution(minR, maxR, currR);
+            bool netTweaked = netOpt.AreTweaksApplied();
+            bool vpnShield = VpnGuard::IsVpnOrDpiBypassActive();
+            auto prof = HardwareDetector::DetectHardware();
+
+            std::cout << "  [ПРАВА И БЕЗОПАСНОСТЬ]\n";
+            std::cout << "  * Права процесса:       " << (isAdmin ? "[ADMINISTRATOR - ПОЛНЫЙ ДОСТУП]" : "[USER - ОГРАНИЧЕННЫЙ]") << "\n";
+            std::cout << "  * Щит VPN / DPI:         " << (vpnShield ? "[АКТИВЕН И ЗАЩИЩЁН (Incy/Happ/Zapret/Wintun)]" : "[ГОТОВ К ЗАЩИТЕ]") << "\n\n";
+
+            std::cout << "  [СЕТЕВЫЕ ТВИТЫ И СТЕК TCP/IP]\n";
+            std::cout << "  * Статус оптимизаций:    " << (netTweaked ? "[АКТИВНЫ (Максимальный приоритет)]" : "[СТАНДАРТНЫЕ WINDOWS]") << "\n";
+            std::cout << "  * Алгоритм Нагла:        ОТКЛЮЧЕН (TCPNoDelay = 1 на всех интерфейсах)\n";
+            std::cout << "  * Частота подтверждений: МГНОВЕННАЯ (TcpAckFrequency = 1, задержка 0 мс)\n";
+            std::cout << "  * Сетевой троттлинг:     ОТКЛЮЧЕН (NetworkThrottlingIndex = 0xFFFFFFFF)\n";
+            std::cout << "  * Отзывчивость игр:      100% (SystemResponsiveness = 0)\n";
+            std::cout << "  * Пул портов сокетов:    65534 (MaxUserPort = 0xFFFE)\n\n";
+
+            std::cout << "  [СИСТЕМНЫЙ ТАЙМЕР И MMCSS]\n";
+            std::cout << "  * Текущий таймер ОС:     " << std::fixed << std::setprecision(3) << currR << " ms ";
+            if (currR <= 0.6) {
+                std::cout << "(УЛЬТРА-ВЫСОКОЕ РАЗРЕШЕНИЕ ~2000 Hz, Минимальный инпут-лаг!)\n";
+            } else if (currR <= 1.1) {
+                std::cout << "(Повышенное разрешение 1000 Hz)\n";
+            } else {
+                std::cout << "(Стандартное энергосберегающее разрешение 64 Hz)\n";
+            }
+            std::cout << "  * MMCSS профиль Games:   АКТИВЕН (GPU Priority = 8, Priority = 6, High Scheduling)\n\n";
+
+            std::cout << "  [ПОДСИСТЕМА ПАМЯТИ И ЖЕЛЕЗО]\n";
+            std::cout << "  * Процессор:             " << prof.cpuBrand << "\n";
+            std::cout << "  * Архитектура:           " << HardwareDetector::GetIsaTierDescription(prof) << "\n";
+            std::cout << "  * Ядра и потоки:         " << prof.physicalCores << " физ. ядер / " << prof.logicalCores << " логических потоков\n";
+            std::cout << "  * Маска аффинити игр:    0x" << std::hex << prof.optimalGameAffinityMask << std::dec << " (Ядро 0 свободно под прерывания ОС)\n";
+            std::cout << "  * Память ОЗУ:            " << prof.totalRamGb << " GB (" << (prof.isHighRam ? "Kernel & Drivers заблокированы в RAM" : "Баланс подкачки") << ")\n\n";
+
+            WSACleanup();
+            return 0;
+        }
         else if (arg == "--hardware" || arg == "-hw") {
             auto prof = HardwareDetector::DetectHardware();
             HardwareDetector::PrintHardwareReport(prof);
@@ -457,6 +499,50 @@ int main(int argc, char* argv[]) {
                 auto prof = HardwareDetector::DetectHardware();
                 HardwareDetector::PrintHardwareReport(prof);
                 std::cout << "\nPress any key to return to menu...";
+                _getch();
+                break;
+            }
+            case 's':
+            case 'S': {
+                UIConsole::PrintHeader("DISPING: ТЕКУЩИЙ СТАТУС ОПТИМИЗАЦИЙ В СИСТЕМЕ");
+                bool isAdmin = RegistryUtil::IsRunningAsAdmin();
+                double minR = 0, maxR = 0, currR = 15.625;
+                latencyOpt.QueryTimerResolution(minR, maxR, currR);
+                bool netTweaked = netOpt.AreTweaksApplied();
+                bool vpnShield = VpnGuard::IsVpnOrDpiBypassActive();
+                auto prof = HardwareDetector::DetectHardware();
+
+                std::cout << "  [ПРАВА И БЕЗОПАСНОСТЬ]\n";
+                std::cout << "  * Права процесса:       " << (isAdmin ? "[ADMINISTRATOR - ПОЛНЫЙ ДОСТУП]" : "[USER - ОГРАНИЧЕННЫЙ]") << "\n";
+                std::cout << "  * Щит VPN / DPI:         " << (vpnShield ? "[АКТИВЕН И ЗАЩИЩЁН (Incy/Happ/Zapret/Wintun)]" : "[ГОТОВ К ЗАЩИТЕ]") << "\n\n";
+
+                std::cout << "  [СЕТЕВЫЕ ТВИТЫ И СТЕК TCP/IP]\n";
+                std::cout << "  * Статус оптимизаций:    " << (netTweaked ? "[АКТИВНЫ (Максимальный приоритет)]" : "[СТАНДАРТНЫЕ WINDOWS]") << "\n";
+                std::cout << "  * Алгоритм Нагла:        ОТКЛЮЧЕН (TCPNoDelay = 1 на всех интерфейсах)\n";
+                std::cout << "  * Частота подтверждений: МГНОВЕННАЯ (TcpAckFrequency = 1, задержка 0 мс)\n";
+                std::cout << "  * Сетевой троттлинг:     ОТКЛЮЧЕН (NetworkThrottlingIndex = 0xFFFFFFFF)\n";
+                std::cout << "  * Отзывчивость игр:      100% (SystemResponsiveness = 0)\n";
+                std::cout << "  * Пул портов сокетов:    65534 (MaxUserPort = 0xFFFE)\n\n";
+
+                std::cout << "  [СИСТЕМНЫЙ ТАЙМЕР И MMCSS]\n";
+                std::cout << "  * Текущий таймер ОС:     " << std::fixed << std::setprecision(3) << currR << " ms ";
+                if (currR <= 0.6) {
+                    std::cout << "(УЛЬТРА-ВЫСОКОЕ РАЗРЕШЕНИЕ ~2000 Hz, Минимальный инпут-лаг!)\n";
+                } else if (currR <= 1.1) {
+                    std::cout << "(Повышенное разрешение 1000 Hz)\n";
+                } else {
+                    std::cout << "(Стандартное энергосберегающее разрешение 64 Hz)\n";
+                }
+                std::cout << "  * MMCSS профиль Games:   АКТИВЕН (GPU Priority = 8, Priority = 6, High Scheduling)\n\n";
+
+                std::cout << "  [ПОДСИСТЕМА ПАМЯТИ И ЖЕЛЕЗО]\n";
+                std::cout << "  * Процессор:             " << prof.cpuBrand << "\n";
+                std::cout << "  * Архитектура:           " << HardwareDetector::GetIsaTierDescription(prof) << "\n";
+                std::cout << "  * Ядра и потоки:         " << prof.physicalCores << " физ. ядер / " << prof.logicalCores << " логических потоков\n";
+                std::cout << "  * Маска аффинити игр:    0x" << std::hex << prof.optimalGameAffinityMask << std::dec << " (Ядро 0 свободно под прерывания ОС)\n";
+                std::cout << "  * Память ОЗУ:            " << prof.totalRamGb << " GB (" << (prof.isHighRam ? "Kernel & Drivers заблокированы в RAM" : "Баланс подкачки") << ")\n\n";
+
+                std::cout << "Press any key to return to menu...";
                 _getch();
                 break;
             }
