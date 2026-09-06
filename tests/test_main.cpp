@@ -252,8 +252,17 @@ void Test_PlatformHealer() {
     bool okLogin = PlatformHealer::RepairSteamLoginSettings();
     assert(okLogin);
 
-    // 4. Overall healer operation
-    auto res = PlatformHealer::HealSteamAndGames();
+    // 4. VDF repair test
+    bool okVdf = PlatformHealer::RepairLoginUsersVdf(sPath);
+    // Might be true or false depending on file existence, but should not crash
+    (void)okVdf;
+
+    // 5. CEF HTML cache cleaning test
+    bool okCache = PlatformHealer::CleanCorruptedHtmlCache();
+    (void)okCache;
+
+    // 6. Overall healer operation (safe default without process termination)
+    auto res = PlatformHealer::HealSteamAndGames(false);
     assert(res.success);
 }
 
