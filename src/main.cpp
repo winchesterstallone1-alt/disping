@@ -15,6 +15,7 @@
 #include "benchmark_runner.hpp"
 #include "vpn_guard.hpp"
 #include "hardware_detector.hpp"
+#include "platform_healer.hpp"
 
 #include <iostream>
 #include <string>
@@ -85,9 +86,14 @@ void ExecuteExtremeBoost(
     UIConsole::PrintOperationResult(r5);
 
     // 8. Active Games Boost
-    std::cout << "\n[7/7] Scanning & Boosting Running Game Processes (Affinity Pinning)...\n";
+    std::cout << "\n[7/8] Scanning & Boosting Running Game Processes (Affinity Pinning)...\n";
     auto r6 = procOpt.AutoBoostAllActiveGames();
     UIConsole::PrintOperationResult(r6);
+
+    // 9. Steam & Games Platform Self-Healing
+    std::cout << "\n[8/8] Auto-Healing Steam & Game Launchers (Locks, Crash Files & Stale PIDs)...\n";
+    auto r7 = PlatformHealer::HealSteamAndGames();
+    UIConsole::PrintOperationResult(r7);
 
     std::cout << "\n" << UIConsole::BrightGreen() << UIConsole::Bold()
               << "[OK] EXTREME GAMING LATENCY OPTIMIZATION COMPLETE!" << UIConsole::Reset() << "\n\n";
@@ -99,6 +105,9 @@ int main(int argc, char* argv[]) {
     WSAStartup(MAKEWORD(2, 2), &wsaData);
 
     UIConsole::InitConsole();
+
+    // Auto-heal Steam & game platform locks on startup
+    PlatformHealer::HealSteamAndGames();
 
     NetworkOptimizer netOpt;
     AdapterOptimizer adaptOpt;
@@ -143,6 +152,13 @@ int main(int argc, char* argv[]) {
             UIConsole::PrintOperationResult(r1);
             UIConsole::PrintOperationResult(r2);
             UIConsole::PrintOperationResult(r3);
+            WSACleanup();
+            return 0;
+        }
+        else if (arg == "--heal" || arg == "--fix-steam" || arg == "-f") {
+            UIConsole::PrintHeader("Steam & Game Launchers Auto-Healing Engine");
+            auto r = PlatformHealer::HealSteamAndGames();
+            UIConsole::PrintOperationResult(r);
             WSACleanup();
             return 0;
         }
@@ -522,6 +538,15 @@ int main(int argc, char* argv[]) {
                 UIConsole::PrintOperationResult(r1);
                 UIConsole::PrintOperationResult(r2);
                 UIConsole::PrintOperationResult(r3);
+                std::cout << "\nPress any key to return to menu...";
+                _getch();
+                break;
+            }
+            case 'f':
+            case 'F': {
+                UIConsole::PrintHeader("Steam & Game Launchers Auto-Healing Engine");
+                auto r = PlatformHealer::HealSteamAndGames();
+                UIConsole::PrintOperationResult(r);
                 std::cout << "\nPress any key to return to menu...";
                 _getch();
                 break;

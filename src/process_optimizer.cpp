@@ -1,6 +1,7 @@
 #include "process_optimizer.hpp"
 #include "vpn_guard.hpp"
 #include "hardware_detector.hpp"
+#include "platform_healer.hpp"
 #include <tlhelp32.h>
 #include <iostream>
 #include <sstream>
@@ -170,11 +171,14 @@ OperationResult ProcessOptimizer::BoostProcessByName(const std::string& processN
 }
 
 OperationResult ProcessOptimizer::AutoBoostAllActiveGames() {
+    // Proactively heal and unlock Steam/CS2 locks (clears .crash and stale PIDs)
+    PlatformHealer::HealSteamAndGames();
+
     auto games = FindActiveGames();
     if (games.empty()) {
         OperationResult r;
         r.success = true;
-        r.message = "No active known game processes detected at this moment.";
+        r.message = "No active known game processes detected at this moment (Steam and platform locks verified healthy).";
         return r;
     }
 

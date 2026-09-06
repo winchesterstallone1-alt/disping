@@ -72,7 +72,13 @@
 - Предотвращает внезапный сброс страниц кэша в файл подкачки во время активного матча, спасая от просадок 1% и 0.1% FPS.
 - Защита процессов Steam, Discord и GPU-драйверов от выгрузки.
 
-### 11. 🛡 Безопасность и откат изменений (1-Click Rollback)
+### 11. 🩺 Авто-восстановление Steam и игровых платформ (PlatformHealer)
+- **Ликвидация мёртвых PID в реестре**: При аварийном завершении Steam в ключе `HKCU\Software\Valve\Steam\ActiveProcess\pid` зависает ID старого процесса. Windows считает, что Steam «уже запущен», и блокирует запуск игры. DisPing автоматически проверяет существование процесса и сбрасывает мертвый PID в 0.
+- **Удаление скрытых блокировок (`.crash`)**: Автоматически стирает лок-файл `.crash` в каталоге Steam, предотвращая циклы бесконечного краш-рекавери.
+- **Снятие зомби-процессов**: Находит и безопасно завершает зависшие без графического окна процессы `steam.exe` / `steamwebhelper.exe`.
+- **Восстановление сессии**: Автоматически восстанавливает флаги `RememberPassword = 1`, `AlreadyRetriedOfflineMode = 0`, исключая выпадение в диалог входа.
+
+### 12. 🛡 Безопасность и откат изменений (1-Click Rollback)
 - Создание резервной копии параметров в `disping_backup.json`.
 - Автоматическая генерация автономного скрипта восстановления `disping_rollback.bat`.
 - Встроенный механизм сброса всех настроек к заводским значениям Windows по одной кнопке `[R]`.
@@ -221,6 +227,7 @@ Tests Summary: Passed = 17, Failed = 0
    [C] Run Real-World Benchmark (Compare BEFORE vs AFTER)
    [V] View VPN & DPI Shield Status (Zapret, Incy, Happ, Wintun)
    [W] Wi-Fi Zero-Jitter Anti-Spike Engine (Disable Scanning & Roaming)
+   [F] Auto-Heal & Unlock Steam / Games (Clear .crash, stale PIDs & zombies)
    [H] Universal Hardware Profiler (Intel Hybrid, AMD X3D, ISA & RAM Tier)
    [S] View Live System Status (Registry, Timer, MMCSS, Hardware)
    [Q] Exit disping
@@ -233,6 +240,7 @@ Tests Summary: Passed = 17, Failed = 0
 | `disping.exe --network` | Применить твики TCP/IP, Нагла и троттлинга |
 | `disping.exe --adapter` | Настроить аппаратные параметры сетевых плат |
 | `disping.exe --wifi` | Запустить Wi-Fi Anti-Spike Engine (отключение фонового скана, роуминга и lfsvc) |
+| `disping.exe --heal` | Авто-лечение Steam и игр (удаление .crash, сброс зависших PID и снятие блокировок) |
 | `disping.exe --timer` | Запустить фоновый демон фиксации таймера 0.500 мс |
 | `disping.exe --ping <ip>` | Микросекундный замер пинга, джиттера RFC 3550 и спарклайн |
 | `disping.exe --mtu [ip]` | Определение и установка наилучшего MTU без фрагментации |

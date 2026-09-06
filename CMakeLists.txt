@@ -45,6 +45,7 @@ set(COMMON_SOURCES
     src/vpn_guard.cpp
     src/hardware_detector.cpp
     src/disping_asm_dispatch.cpp
+    src/platform_healer.cpp
 )
 
 # Main Executable

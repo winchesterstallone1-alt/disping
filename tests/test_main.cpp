@@ -13,6 +13,7 @@
 #include "process_optimizer.hpp"
 #include "mtu_optimizer.hpp"
 #include "hardware_detector.hpp"
+#include "platform_healer.hpp"
 
 using namespace disping;
 
@@ -239,6 +240,23 @@ void Test_WifiOptimizer() {
     (void)r3;
 }
 
+void Test_PlatformHealer() {
+    // 1. Steam path discovery
+    std::string sPath = PlatformHealer::GetSteamPath();
+    assert(!sPath.empty());
+
+    // 2. ActiveProcess audit
+    PlatformHealer::RepairActiveProcessRegistry();
+
+    // 3. Login settings
+    bool okLogin = PlatformHealer::RepairSteamLoginSettings();
+    assert(okLogin);
+
+    // 4. Overall healer operation
+    auto res = PlatformHealer::HealSteamAndGames();
+    assert(res.success);
+}
+
 int main() {
     WSADATA wsa;
     WSAStartup(MAKEWORD(2, 2), &wsa);
@@ -265,6 +283,7 @@ int main() {
     RUN_TEST(Test_DynamicIsaDispatch);
     RUN_TEST(Test_UniversalFallbackSse2);
     RUN_TEST(Test_WifiOptimizer);
+    RUN_TEST(Test_PlatformHealer);
 
     std::cout << "\n----------------------------------------\n";
     std::cout << "Tests Summary: Passed = " << g_passedTests 
