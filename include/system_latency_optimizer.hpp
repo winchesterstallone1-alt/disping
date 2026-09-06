@@ -27,6 +27,10 @@ public:
     // Hardware-adapted memory management (DisablePagingExecutive for >= 16GB RAM)
     OperationResult OptimizeMemorySubsystem(bool isHighRam);
 
+    // Wi-Fi Anti-Spike: Disable Windows Location Service (lfsvc BSSID periodic scan)
+    OperationResult DisableLocationServices();
+    OperationResult RestoreLocationServices();
+
     // Keep the timer locked in background until StopTimerDaemon()
     void StartTimerDaemon(double targetMs = 0.5);
     void StopTimerDaemon();

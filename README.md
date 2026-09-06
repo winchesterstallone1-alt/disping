@@ -43,29 +43,36 @@
 - **Отключение энергосбережения сетевого чипа (Green Ethernet, EEE)**: Запрет на засыпание PHY-трансивера сетевой карты.
 - **Отключение Flow Control (802.3x)**: Запрет управляющих Pause-фреймов, вызывающих спайки задержки.
 
-### 5. 🏷 Политики QoS DSCP 46 (Expedited Forwarding)
+### 5. 📡 Zero-Jitter Wi-Fi Anti-Spike Engine (Ликвидация спайков пинга 200+ мс)
+- **Устранение фонового сканирования каналов (WLAN AutoConfig Suppression)**: Windows периодически покидает рабочий канал Wi-Fi для фонового сканирования сетей каждые 30-60 секунд, вызывая жесткие спайки задержки (до 250-400 мс) и дропы UDP-пакетов в CS2. DisPing отключает фоновый скан через Native Wi-Fi API (`WlanSetInterface`) во время игры.
+- **Блокировка службы геолокации Windows (`lfsvc`)**: Служба местоположения Windows раз в 8-10 секунд запрашивает координаты через триангуляцию BSSID соседних роутеров. DisPing останавливает службу `lfsvc`, полностью устраняя периодические 8-секундные лаг-спайки.
+- **Подавление чувствительности роуминга (Roaming Aggressiveness)**: Для адаптеров Realtek, Intel и Mediatek настраиваются ключи драйвера (`RegRoamLevel=1`, `RegROAMSensitiveLevel=0`, `RoamAggressiveness=1`), запрещая карте самовольно искать другие точки доступа при кратковременных просадках RSSI.
+- **Отключение энергосбережения радиомодуля и шины PCIe**: `LpsEn=0`, `IpsEn=0`, отключение PCIe ASPM L1/L1Off (`ClkReqSupport=0`, `L1Support=0`), отключение Wi-Fi RSC (`*WdiRscIPv4=0`, `*WdiRscIPv6=0`) и включение пакетного буста `TxPacketBoost=1`.
+
+### 6. 🏷 Политики QoS DSCP 46 (Expedited Forwarding)
 - Активация `DisableUserTOSSetting = 0` и снятие блокировок NLA.
 - Автоматическая маркировка пакетов игровых процессов тегом **DSCP 46 (0x2E, TOS 0xB8 - Expedited Forwarding)**.
 - Домашние и магистральные роутеры обрабатывают данный трафик в приоритетной очереди с минимальной задержкой.
 
-### 6. 🔍 Бинарный поиск оптимального MTU (Don't Fragment)
+### 7. 🔍 Бинарный поиск оптимального MTU (Don't Fragment)
 - Прощупывание сетевого маршрута ICMP-дейтаграммами с флагом `DF` (Don't Fragment) для нахождения точного размера нефрагментируемого пакета (MTU/MSS).
 - Исключает фрагментацию пакетов на шлюзах провайдера.
 
-### 7. 🚀 Бенчмарк DNS и автовыбор лучшего резолвера
+### 8. 🚀 Бенчмарк DNS и автовыбор лучшего резолвера
 - Замер прямого сокетного Round-Trip Time к ведущим игровым резолверам (Cloudflare Gaming, Google DNS, Quad9, AdGuard Gaming, OpenDNS).
 - Автоматическая установка быстрейшего DNS на активный сетевой адаптер и очистка кэша Windows (`ipconfig /flushdns`).
 
-### 8. 🧠 Буст процессов и изоляция ядер (P-Core Pinning)
+### 9. 🧠 Буст процессов и изоляция ядер (P-Core Pinning)
 - Автоматическое обнаружение запущенных игр (`cs2.exe`, `valorant.exe`, `dota2.exe`, `r5apex.exe` и др.).
 - Повышение класса приоритета до `HIGH_PRIORITY_CLASS`.
 - Привязка процесса к физическим производительным ядрам (P-Cores) с изоляцией Ядра 0 (Core 0), на котором Windows обрабатывает аппаратные прерывания DPC/ISR, защищая игру от лагов планировщика.
 
-### 9. 🧹 Очистка Standby List и рабочих наборов памяти
+### 10. 🧹 Очистка Standby List и рабочих наборов памяти
 - Принудительный сброс файлового кэша Windows Standby List через `NtSetSystemInformation(SystemMemoryListInformation)`.
 - Предотвращает внезапный сброс страниц кэша в файл подкачки во время активного матча, спасая от просадок 1% и 0.1% FPS.
+- Защита процессов Steam, Discord и GPU-драйверов от выгрузки.
 
-### 10. 🛡 Безопасность и откат изменений (1-Click Rollback)
+### 11. 🛡 Безопасность и откат изменений (1-Click Rollback)
 - Создание резервной копии параметров в `disping_backup.json`.
 - Автоматическая генерация автономного скрипта восстановления `disping_rollback.bat`.
 - Встроенный механизм сброса всех настроек к заводским значениям Windows по одной кнопке `[R]`.
@@ -213,7 +220,9 @@ Tests Summary: Passed = 17, Failed = 0
    [T] Run Built-in Automated Verification Tests
    [C] Run Real-World Benchmark (Compare BEFORE vs AFTER)
    [V] View VPN & DPI Shield Status (Zapret, Incy, Happ, Wintun)
+   [W] Wi-Fi Zero-Jitter Anti-Spike Engine (Disable Scanning & Roaming)
    [H] Universal Hardware Profiler (Intel Hybrid, AMD X3D, ISA & RAM Tier)
+   [S] View Live System Status (Registry, Timer, MMCSS, Hardware)
    [Q] Exit disping
 ```
 
@@ -223,6 +232,7 @@ Tests Summary: Passed = 17, Failed = 0
 | `disping.exe --all` | Применить полный комплекс экстремальной оптимизации в один клик |
 | `disping.exe --network` | Применить твики TCP/IP, Нагла и троттлинга |
 | `disping.exe --adapter` | Настроить аппаратные параметры сетевых плат |
+| `disping.exe --wifi` | Запустить Wi-Fi Anti-Spike Engine (отключение фонового скана, роуминга и lfsvc) |
 | `disping.exe --timer` | Запустить фоновый демон фиксации таймера 0.500 мс |
 | `disping.exe --ping <ip>` | Микросекундный замер пинга, джиттера RFC 3550 и спарклайн |
 | `disping.exe --mtu [ip]` | Определение и установка наилучшего MTU без фрагментации |
@@ -232,6 +242,7 @@ Tests Summary: Passed = 17, Failed = 0
 | `disping.exe --compare`  | Запуск бенчмарка реальных тестов (сравнение ДО и ПОСЛЕ)|
 | `disping.exe --vpn-check`| Проверка статуса Щита Совместимости с VPN/DPI |
 | `disping.exe --hardware` | Профиль архитектуры CPU, RAM, маски аффинити и ISA |
+| `disping.exe --status`   | Просмотр текущего статуса всех твиков, таймера и железа |
 | `disping.exe --restore`  | Полный возврат системы к стандартным параметрам Windows |
 | `disping.exe --version`  | Сведения о версии и поддержке инструкций процессора |
 

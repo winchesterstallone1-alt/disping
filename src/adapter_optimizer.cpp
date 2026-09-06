@@ -7,6 +7,7 @@
 #include "adapter_optimizer.hpp"
 #include "registry_util.hpp"
 #include "vpn_guard.hpp"
+#include <wlanapi.h>
 #include <iostream>
 #include <iomanip>
 #include <sstream>
@@ -211,19 +212,150 @@ OperationResult AdapterOptimizer::DisableFlowControl() {
     return res;
 }
 
+bool AdapterOptimizer::IsWifiAdapter(const std::string& classKey) const {
+    std::string desc;
+    if (RegistryUtil::GetString(HKEY_LOCAL_MACHINE, classKey, "DriverDesc", desc)) {
+        std::string lowerDesc = desc;
+        for (char& c : lowerDesc) c = static_cast<char>(::tolower(static_cast<unsigned char>(c)));
+        if (lowerDesc.find("wireless") != std::string::npos ||
+            lowerDesc.find("wi-fi") != std::string::npos ||
+            lowerDesc.find("wifi") != std::string::npos ||
+            lowerDesc.find("802.11") != std::string::npos ||
+            lowerDesc.find("wlan") != std::string::npos) {
+            return true;
+        }
+    }
+    DWORD ifType = 0;
+    if (RegistryUtil::GetDword(HKEY_LOCAL_MACHINE, classKey, "*IfType", ifType)) {
+        if (ifType == 71) { // IF_TYPE_IEEE80211
+            return true;
+        }
+    }
+    DWORD mediaType = 0;
+    if (RegistryUtil::GetDword(HKEY_LOCAL_MACHINE, classKey, "*MediaType", mediaType)) {
+        if (mediaType == 16) { // NdisMediumNative802_11
+            return true;
+        }
+    }
+    return false;
+}
+
+OperationResult AdapterOptimizer::OptimizeWifiAdapters() {
+    OperationResult res;
+    if (!RegistryUtil::IsRunningAsAdmin()) {
+        res.success = false;
+        res.message = "Administrator privileges required to optimize Wi-Fi adapters.";
+        return res;
+    }
+
+    auto keys = GetAdapterClassKeys();
+    int count = 0;
+    for (const auto& key : keys) {
+        if (!IsWifiAdapter(key)) {
+            continue;
+        }
+
+        // 1. Roaming Aggressiveness (Disable or set lowest so card never scans/drops game channel)
+        RegistryUtil::SetString(HKEY_LOCAL_MACHINE, key, "RegRoamLevel", "1");
+        RegistryUtil::SetString(HKEY_LOCAL_MACHINE, key, "RegROAMSensitiveLevel", "0");
+        RegistryUtil::SetString(HKEY_LOCAL_MACHINE, key, "RoamAggressiveness", "1");
+
+        // 2. Power Saving & PCIe ASPM (Prevents Wi-Fi radio sleep / latency spikes)
+        RegistryUtil::SetString(HKEY_LOCAL_MACHINE, key, "LpsEn", "0");
+        RegistryUtil::SetString(HKEY_LOCAL_MACHINE, key, "IpsEn", "0");
+        RegistryUtil::SetString(HKEY_LOCAL_MACHINE, key, "L0sSupport", "0");
+        RegistryUtil::SetString(HKEY_LOCAL_MACHINE, key, "L1Support", "0");
+        RegistryUtil::SetString(HKEY_LOCAL_MACHINE, key, "L1OffSupport", "0");
+        RegistryUtil::SetString(HKEY_LOCAL_MACHINE, key, "ClkReqSupport", "0");
+        RegistryUtil::SetString(HKEY_LOCAL_MACHINE, key, "PowerSaveMode", "0");
+        RegistryUtil::SetString(HKEY_LOCAL_MACHINE, key, "uAPSDSupport", "0");
+        RegistryUtil::SetString(HKEY_LOCAL_MACHINE, key, "MIMO_PS", "0");
+
+        // 3. Packet Transmission & Receive Segment Coalescing (RSC causes UDP jitter)
+        RegistryUtil::SetString(HKEY_LOCAL_MACHINE, key, "TxPacketBoost", "1");
+        RegistryUtil::SetDword(HKEY_LOCAL_MACHINE, key, "*WdiRscIPv4", 0);
+        RegistryUtil::SetDword(HKEY_LOCAL_MACHINE, key, "*WdiRscIPv6", 0);
+        RegistryUtil::SetString(HKEY_LOCAL_MACHINE, key, "*PacketCoalescing", "0");
+        RegistryUtil::SetString(HKEY_LOCAL_MACHINE, key, "ThroughputBoosterEnabled", "1");
+
+        count++;
+    }
+
+    res.success = (count > 0);
+    if (count > 0) {
+        res.message = "Wi-Fi Adapter optimized: Roaming sensitivity disabled, PCIe sleep disabled, RSC disabled on " 
+                      + std::to_string(count) + " wireless profile(s).";
+    } else {
+        res.message = "No active physical Wi-Fi adapters detected (Ethernet system).";
+    }
+    return res;
+}
+
+OperationResult AdapterOptimizer::SetWifiBackgroundScan(bool enabled) {
+    OperationResult res;
+    if (!RegistryUtil::IsRunningAsAdmin()) {
+        res.success = false;
+        res.message = "Administrator privileges required to control Wi-Fi scan.";
+        return res;
+    }
+
+    HANDLE hClient = NULL;
+    DWORD dwCurVersion = 0;
+    DWORD dwResult = WlanOpenHandle(2, NULL, &dwCurVersion, &hClient);
+    int count = 0;
+
+    if (dwResult == ERROR_SUCCESS) {
+        PWLAN_INTERFACE_INFO_LIST pIfList = NULL;
+        dwResult = WlanEnumInterfaces(hClient, NULL, &pIfList);
+        if (dwResult == ERROR_SUCCESS && pIfList != NULL) {
+            for (DWORD i = 0; i < pIfList->dwNumberOfItems; i++) {
+                PWLAN_INTERFACE_INFO pIfInfo = &pIfList->InterfaceInfo[i];
+                BOOL bEnable = enabled ? TRUE : FALSE;
+                DWORD setRes = WlanSetInterface(
+                    hClient,
+                    &pIfInfo->InterfaceGuid,
+                    wlan_intf_opcode_autoconf_enabled,
+                    sizeof(BOOL),
+                    &bEnable,
+                    NULL
+                );
+                if (setRes == ERROR_SUCCESS) {
+                    count++;
+                }
+            }
+            WlanFreeMemory(pIfList);
+        }
+        WlanCloseHandle(hClient, NULL);
+    }
+
+    res.success = (count > 0);
+    if (!enabled) {
+        res.message = count > 0 
+            ? "Wi-Fi Background Scan DISABLED via Native WLAN API (" + std::to_string(count) + " interface(s)). Zero ping spikes!"
+            : "No active Wi-Fi interfaces found for background scan suppression.";
+    } else {
+        res.message = "Wi-Fi Background Scan re-enabled (" + std::to_string(count) + " interface(s)).";
+    }
+    return res;
+}
+
 OperationResult AdapterOptimizer::OptimizeAllNetworkAdapters() {
     OperationResult r1 = DisableInterruptModeration();
     OperationResult r2 = DisableLargeSendOffload();
     OperationResult r3 = DisableEnergySaving();
     OperationResult r4 = MaximizeAdapterBuffers();
     OperationResult r5 = DisableFlowControl();
+    OperationResult r6 = OptimizeWifiAdapters();
+    OperationResult r7 = SetWifiBackgroundScan(false);
 
     OperationResult overall;
-    overall.success = r1.success || r2.success || r3.success || r4.success || r5.success;
+    overall.success = r1.success || r2.success || r3.success || r4.success || r5.success || r6.success;
     overall.message = overall.success 
         ? "Network Adapter Hardware properties tuned for minimum latency!" 
         : "Failed to modify adapter properties (run as Administrator).";
     overall.details = r1.message + "\n" + r2.message + "\n" + r3.message + "\n" + r4.message + "\n" + r5.message;
+    if (r6.success) overall.details += "\n" + r6.message;
+    if (r7.success) overall.details += "\n" + r7.message;
     return overall;
 }
 

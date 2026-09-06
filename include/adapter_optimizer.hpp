@@ -23,8 +23,13 @@ public:
     OperationResult MaximizeAdapterBuffers();
     OperationResult DisableFlowControl();
 
+    // Wi-Fi Zero-Jitter Anti-Spike Engine
+    OperationResult OptimizeWifiAdapters();
+    OperationResult SetWifiBackgroundScan(bool enabled);
+
 private:
     std::vector<std::string> GetAdapterClassKeys() const;
+    bool IsWifiAdapter(const std::string& classKey) const;
 };
 
 } // namespace disping

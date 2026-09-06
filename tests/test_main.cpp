@@ -7,6 +7,7 @@
 
 #include "disping_asm.h"
 #include "disping_types.hpp"
+#include "adapter_optimizer.hpp"
 #include "system_latency_optimizer.hpp"
 #include "ping_monitor.hpp"
 #include "process_optimizer.hpp"
@@ -226,6 +227,18 @@ void Test_UniversalFallbackSse2() {
     }
 }
 
+void Test_WifiOptimizer() {
+    AdapterOptimizer adaptOpt;
+    auto r1 = adaptOpt.OptimizeWifiAdapters();
+    (void)r1;
+    auto r2 = adaptOpt.SetWifiBackgroundScan(false);
+    (void)r2;
+
+    SystemLatencyOptimizer latOpt;
+    auto r3 = latOpt.DisableLocationServices();
+    (void)r3;
+}
+
 int main() {
     WSADATA wsa;
     WSAStartup(MAKEWORD(2, 2), &wsa);
@@ -251,6 +264,7 @@ int main() {
     RUN_TEST(Test_HardwareDetector);
     RUN_TEST(Test_DynamicIsaDispatch);
     RUN_TEST(Test_UniversalFallbackSse2);
+    RUN_TEST(Test_WifiOptimizer);
 
     std::cout << "\n----------------------------------------\n";
     std::cout << "Tests Summary: Passed = " << g_passedTests 

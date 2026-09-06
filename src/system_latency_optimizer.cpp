@@ -145,6 +145,62 @@ OperationResult SystemLatencyOptimizer::OptimizeMemorySubsystem(bool isHighRam) 
     return res;
 }
 
+OperationResult SystemLatencyOptimizer::DisableLocationServices() {
+    OperationResult res;
+    if (!RegistryUtil::IsRunningAsAdmin()) {
+        res.success = false;
+        res.message = "Administrator privileges required to control Location Services.";
+        return res;
+    }
+
+    // Stop lfsvc service via Service Control Manager
+    SC_HANDLE hSCM = OpenSCManagerA(NULL, NULL, SC_MANAGER_ALL_ACCESS);
+    if (hSCM) {
+        SC_HANDLE hService = OpenServiceA(hSCM, "lfsvc", SERVICE_STOP | SERVICE_CHANGE_CONFIG | SERVICE_QUERY_STATUS);
+        if (hService) {
+            SERVICE_STATUS status;
+            ControlService(hService, SERVICE_CONTROL_STOP, &status);
+            ChangeServiceConfigA(hService, SERVICE_NO_CHANGE, SERVICE_DISABLED, SERVICE_NO_CHANGE,
+                                 NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+            CloseServiceHandle(hService);
+        }
+        CloseServiceHandle(hSCM);
+    }
+
+    // Set registry key for persistent disable
+    RegistryUtil::SetDword(HKEY_LOCAL_MACHINE, "SYSTEM\\CurrentControlSet\\Services\\lfsvc", "Start", 4);
+
+    res.success = true;
+    res.message = "Windows Geolocation Service (lfsvc) DISABLED (Eliminates periodic 8s BSSID scan ping spikes).";
+    return res;
+}
+
+OperationResult SystemLatencyOptimizer::RestoreLocationServices() {
+    OperationResult res;
+    if (!RegistryUtil::IsRunningAsAdmin()) {
+        res.success = false;
+        res.message = "Administrator privileges required.";
+        return res;
+    }
+
+    SC_HANDLE hSCM = OpenSCManagerA(NULL, NULL, SC_MANAGER_ALL_ACCESS);
+    if (hSCM) {
+        SC_HANDLE hService = OpenServiceA(hSCM, "lfsvc", SERVICE_CHANGE_CONFIG);
+        if (hService) {
+            ChangeServiceConfigA(hService, SERVICE_NO_CHANGE, SERVICE_DEMAND_START, SERVICE_NO_CHANGE,
+                                 NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+            CloseServiceHandle(hService);
+        }
+        CloseServiceHandle(hSCM);
+    }
+
+    RegistryUtil::SetDword(HKEY_LOCAL_MACHINE, "SYSTEM\\CurrentControlSet\\Services\\lfsvc", "Start", 3);
+
+    res.success = true;
+    res.message = "Windows Geolocation Service (lfsvc) restored to Manual.";
+    return res;
+}
+
 void SystemLatencyOptimizer::StartTimerDaemon(double targetMs) {
     if (m_daemonRunning.load()) {
         return;

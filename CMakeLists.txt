@@ -62,6 +62,7 @@ target_link_libraries(disping PRIVATE
     avrt
     psapi
     advapi32
+    wlanapi
 )
 
 target_compile_options(disping PRIVATE -O3 -Wall -Wextra -static -static-libgcc -static-libstdc++)
@@ -82,6 +83,7 @@ target_link_libraries(disping_tests PRIVATE
     avrt
     psapi
     advapi32
+    wlanapi
 )
 
 target_compile_options(disping_tests PRIVATE -O3 -Wall -Wextra -static -static-libgcc -static-libstdc++)

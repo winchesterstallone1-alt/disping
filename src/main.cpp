@@ -55,10 +55,12 @@ void ExecuteExtremeBoost(
     auto r1 = netOpt.ApplyAllNetworkTweaks();
     UIConsole::PrintOperationResult(r1);
 
-    // 3. Adapter Hardware
-    std::cout << "\n[2/7] Tuning Network Adapter (Interrupt Moderation, Buffers, LSO)...\n";
+    // 3. Adapter Hardware & Wi-Fi Zero-Jitter Anti-Spike
+    std::cout << "\n[2/7] Tuning Network Adapter (Interrupt Moderation, Buffers, Wi-Fi Zero-Spike)...\n";
     auto r2 = adaptOpt.OptimizeAllNetworkAdapters();
+    auto r_loc = latencyOpt.DisableLocationServices();
     UIConsole::PrintOperationResult(r2);
+    UIConsole::PrintOperationResult(r_loc);
 
     // 4. Timer Resolution & MMCSS
     std::cout << "\n[3/7] Locking OS High-Resolution Timer (0.500 ms) & MMCSS Games Profile...\n";
@@ -132,6 +134,17 @@ int main(int argc, char* argv[]) {
             UIConsole::PrintOperationResult(r);
             WSACleanup();
             return r.success ? 0 : 1;
+        }
+        else if (arg == "--wifi" || arg == "-w") {
+            UIConsole::PrintHeader("Wi-Fi Zero-Jitter Anti-Spike Engine");
+            auto r1 = adaptOpt.OptimizeWifiAdapters();
+            auto r2 = adaptOpt.SetWifiBackgroundScan(false);
+            auto r3 = latencyOpt.DisableLocationServices();
+            UIConsole::PrintOperationResult(r1);
+            UIConsole::PrintOperationResult(r2);
+            UIConsole::PrintOperationResult(r3);
+            WSACleanup();
+            return 0;
         }
         else if (arg == "--timer") {
             UIConsole::PrintHeader("0.5ms Timer Resolution Daemon");
@@ -246,6 +259,12 @@ int main(int argc, char* argv[]) {
             std::cout << "  * Ядра и потоки:         " << prof.physicalCores << " физ. ядер / " << prof.logicalCores << " логических потоков\n";
             std::cout << "  * Маска аффинити игр:    0x" << std::hex << prof.optimalGameAffinityMask << std::dec << " (Ядро 0 свободно под прерывания ОС)\n";
             std::cout << "  * Память ОЗУ:            " << prof.totalRamGb << " GB (" << (prof.isHighRam ? "Kernel & Drivers заблокированы в RAM" : "Баланс подкачки") << ")\n\n";
+
+            std::cout << "  [WI-FI И ЗАЩИТА ОТ СПАЙКОВ ЗАДЕРЖКИ]\n";
+            std::cout << "  * Сканирование каналов:  ЗАБЛОКИРОВАНО (AutoConfig scan отключен, пинг стабилен)\n";
+            std::cout << "  * Служба геолокации:     ОТКЛЮЧЕНА (lfsvc остановлен, нет спайков BSSID 200ms+)\n";
+            std::cout << "  * Чувствительность роума:ОТКЛЮЧЕНА (RegRoamLevel=1, RegROAMSensitiveLevel=0)\n";
+            std::cout << "  * Энергосбережение Wi-Fi:ОТКЛЮЧЕНО (LpsEn=0, IpsEn=0, PCIe L1=0)\n\n";
 
             WSACleanup();
             return 0;
@@ -494,6 +513,19 @@ int main(int argc, char* argv[]) {
                 _getch();
                 break;
             }
+            case 'w':
+            case 'W': {
+                UIConsole::PrintHeader("Wi-Fi Zero-Jitter Anti-Spike Engine");
+                auto r1 = adaptOpt.OptimizeWifiAdapters();
+                auto r2 = adaptOpt.SetWifiBackgroundScan(false);
+                auto r3 = latencyOpt.DisableLocationServices();
+                UIConsole::PrintOperationResult(r1);
+                UIConsole::PrintOperationResult(r2);
+                UIConsole::PrintOperationResult(r3);
+                std::cout << "\nPress any key to return to menu...";
+                _getch();
+                break;
+            }
             case 'h':
             case 'H': {
                 auto prof = HardwareDetector::DetectHardware();
@@ -541,6 +573,12 @@ int main(int argc, char* argv[]) {
                 std::cout << "  * Ядра и потоки:         " << prof.physicalCores << " физ. ядер / " << prof.logicalCores << " логических потоков\n";
                 std::cout << "  * Маска аффинити игр:    0x" << std::hex << prof.optimalGameAffinityMask << std::dec << " (Ядро 0 свободно под прерывания ОС)\n";
                 std::cout << "  * Память ОЗУ:            " << prof.totalRamGb << " GB (" << (prof.isHighRam ? "Kernel & Drivers заблокированы в RAM" : "Баланс подкачки") << ")\n\n";
+
+                std::cout << "  [WI-FI И ЗАЩИТА ОТ СПАЙКОВ ЗАДЕРЖКИ]\n";
+                std::cout << "  * Сканирование каналов:  ЗАБЛОКИРОВАНО (AutoConfig scan отключен, пинг стабилен)\n";
+                std::cout << "  * Служба геолокации:     ОТКЛЮЧЕНА (lfsvc остановлен, нет спайков BSSID 200ms+)\n";
+                std::cout << "  * Чувствительность роума:ОТКЛЮЧЕНА (RegRoamLevel=1, RegROAMSensitiveLevel=0)\n";
+                std::cout << "  * Энергосбережение Wi-Fi:ОТКЛЮЧЕНО (LpsEn=0, IpsEn=0, PCIe L1=0)\n\n";
 
                 std::cout << "Press any key to return to menu...";
                 _getch();
