@@ -86,6 +86,59 @@ void Test_AssemblyMemzero() {
     }
 }
 
+void Test_AssemblyAvx2Support() {
+    int hasAvx2 = asm_has_avx2_support();
+    // AMD Zen 3+ supports AVX2
+    assert(hasAvx2 == 1);
+}
+
+void Test_AssemblyFastTsc() {
+    uint64_t t1 = asm_read_tsc_fast_serialized();
+    Sleep(5);
+    uint64_t t2 = asm_read_tsc_fast_serialized();
+    assert(t2 > t1);
+    assert((t2 - t1) > 1000ULL);
+}
+
+void Test_AssemblyCrc32() {
+    const char msg[] = "123456789";
+    uint32_t crc = asm_crc32_fast(msg, 9);
+    assert(crc != 0);
+    assert(crc == 0xe3069283); // Standard CRC32-C of "123456789"
+}
+
+void Test_AssemblyMemcpy() {
+    alignas(32) char src[256];
+    alignas(32) char dst[256];
+    for (size_t i = 0; i < sizeof(src); ++i) src[i] = static_cast<char>(i);
+    std::memset(dst, 0, sizeof(dst));
+
+    asm_avx2_memcpy_nt(dst, src, sizeof(src));
+
+    for (size_t i = 0; i < sizeof(src); ++i) {
+        assert(dst[i] == src[i]);
+    }
+}
+
+void Test_AssemblySimdStats() {
+    std::vector<double> rtts = {10.0, 20.0, 30.0, 40.0};
+    double outMin = 0, outMax = 0, outAvg = 0, outStdDev = 0;
+    asm_calc_ping_stats_simd(rtts.data(), rtts.size(), &outMin, &outMax, &outAvg, &outStdDev);
+
+    assert(std::fabs(outMin - 10.0) < 0.001);
+    assert(std::fabs(outMax - 40.0) < 0.001);
+    assert(std::fabs(outAvg - 25.0) < 0.001);
+    // Population std dev of [10, 20, 30, 40] = sqrt(125) = ~11.1803
+    assert(std::fabs(outStdDev - std::sqrt(125.0)) < 0.01);
+}
+
+void Test_AssemblySpinWait() {
+    uint64_t t1 = asm_read_tsc_fast();
+    asm_spin_wait_ns(5000); // 5000 cycles
+    uint64_t t2 = asm_read_tsc_fast();
+    assert(t2 >= t1 + 5000);
+}
+
 void Test_TimerResolutionQuery() {
     SystemLatencyOptimizer latOpt;
     double minMs = 0, maxMs = 0, currMs = 0;
@@ -118,12 +171,10 @@ void Test_ProcessAffinityMaskCalculation() {
 void Test_LocalPing() {
     PingMonitor mon;
     double rtt = mon.PingSingle("127.0.0.1", 1000);
-    // Localhost ping might succeed or be disabled, but shouldn't crash
     (void)rtt;
 }
 
 int main() {
-    // Initialize Winsock
     WSADATA wsa;
     WSAStartup(MAKEWORD(2, 2), &wsa);
 
@@ -135,6 +186,12 @@ int main() {
     RUN_TEST(Test_AssemblyTsc);
     RUN_TEST(Test_AssemblyJitter);
     RUN_TEST(Test_AssemblyMemzero);
+    RUN_TEST(Test_AssemblyAvx2Support);
+    RUN_TEST(Test_AssemblyFastTsc);
+    RUN_TEST(Test_AssemblyCrc32);
+    RUN_TEST(Test_AssemblyMemcpy);
+    RUN_TEST(Test_AssemblySimdStats);
+    RUN_TEST(Test_AssemblySpinWait);
     RUN_TEST(Test_TimerResolutionQuery);
     RUN_TEST(Test_SparklineGeneration);
     RUN_TEST(Test_ProcessAffinityMaskCalculation);

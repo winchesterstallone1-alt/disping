@@ -31,6 +31,9 @@ struct BenchmarkMetrics {
     double scalarChecksumThroughputMBs = 0.0;
     double asmChecksumThroughputMBs = 0.0;
     double asmSpeedupFactor = 0.0;
+    double crc32ThroughputMBs = 0.0;
+    double memzeroThroughputGBs = 0.0;
+    double simdStatsSpeedup = 0.0;
     uint64_t qpcCycles = 0;
     uint64_t rdtscCycles = 0;
 
@@ -58,7 +61,16 @@ public:
 private:
     double BenchmarkSleepPrecision(double& maxSleep, int iterations = 15);
     double BenchmarkDnsResolution(const std::string& domain = "valve.net");
-    void BenchmarkAssemblyRoutines(double& scalarMBs, double& asmMBs, double& speedup, uint64_t& qpcCyc, uint64_t& rdtscCyc);
+    void BenchmarkAssemblyRoutines(
+        double& scalarMBs, 
+        double& asmMBs, 
+        double& speedup,
+        double& crcMBs,
+        double& memzeroGBs,
+        double& statsSpeedup,
+        uint64_t& qpcCyc, 
+        uint64_t& rdtscCyc
+    );
 };
 
 } // namespace disping

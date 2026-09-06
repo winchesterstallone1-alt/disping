@@ -74,7 +74,10 @@ double BenchmarkRunner::BenchmarkDnsResolution(const std::string& domain) {
 void BenchmarkRunner::BenchmarkAssemblyRoutines(
     double& scalarMBs, 
     double& asmMBs, 
-    double& speedup, 
+    double& speedup,
+    double& crcMBs,
+    double& memzeroGBs,
+    double& statsSpeedup,
     uint64_t& qpcCyc, 
     uint64_t& rdtscCyc) 
 {
@@ -83,7 +86,7 @@ void BenchmarkRunner::BenchmarkAssemblyRoutines(
 
     // Warm-up
     volatile uint16_t w1 = ScalarChecksum16(buffer.data(), 1024);
-    volatile uint16_t w2 = asm_fast_checksum_x64(buffer.data(), 1024);
+    volatile uint16_t w2 = asm_avx2_checksum(buffer.data(), 1024);
     (void)w1; (void)w2;
 
     // Benchmark Scalar Checksum
@@ -95,9 +98,9 @@ void BenchmarkRunner::BenchmarkAssemblyRoutines(
     double scalarMs = std::chrono::duration<double, std::milli>(t2 - t1).count();
     scalarMBs = (bufSize / (1024.0 * 1024.0)) / (scalarMs / 1000.0);
 
-    // Benchmark Assembly Checksum
+    // Benchmark Assembly AVX2 Checksum
     auto t3 = std::chrono::high_resolution_clock::now();
-    volatile uint16_t csAsm = asm_fast_checksum_x64(buffer.data(), bufSize);
+    volatile uint16_t csAsm = asm_avx2_checksum(buffer.data(), bufSize);
     auto t4 = std::chrono::high_resolution_clock::now();
     (void)csAsm;
 
@@ -107,21 +110,76 @@ void BenchmarkRunner::BenchmarkAssemblyRoutines(
 
     speedup = asmMBs / scalarMBs;
 
-    // Benchmark QPC vs RDTSC cost
-    uint64_t cyc1 = asm_read_tsc_serialized();
+    // Benchmark Hardware CRC32-C (SSE4.2/Zen3)
+    auto tc1 = std::chrono::high_resolution_clock::now();
+    volatile uint32_t crcVal = asm_crc32_fast(buffer.data(), bufSize);
+    auto tc2 = std::chrono::high_resolution_clock::now();
+    (void)crcVal;
+    double crcMs = std::chrono::duration<double, std::milli>(tc2 - tc1).count();
+    if (crcMs < 0.001) crcMs = 0.001;
+    crcMBs = (bufSize / (1024.0 * 1024.0)) / (crcMs / 1000.0);
+
+    // Benchmark AVX2 Non-temporal Memzero
+    auto tm1 = std::chrono::high_resolution_clock::now();
+    asm_avx2_memzero_nt(buffer.data(), bufSize);
+    auto tm2 = std::chrono::high_resolution_clock::now();
+    double mzMs = std::chrono::duration<double, std::milli>(tm2 - tm1).count();
+    if (mzMs < 0.001) mzMs = 0.001;
+    memzeroGBs = ((bufSize / (1024.0 * 1024.0 * 1024.0)) / (mzMs / 1000.0));
+
+    // Benchmark Ping Stats SIMD vs Scalar
+    const size_t statsCount = 100000;
+    std::vector<double> rtts(statsCount, 12.34);
+    for (size_t i = 0; i < statsCount; ++i) rtts[i] += (i % 10) * 0.5;
+
+    // Warm-up cache
+    double dummyMin = 0, dummyMax = 0, dummyAvg = 0, dummyStd = 0;
+    asm_calc_ping_stats_simd(rtts.data(), 1024, &dummyMin, &dummyMax, &dummyAvg, &dummyStd);
+
+    // Scalar stats (4 separate passes)
+    auto ts1 = std::chrono::high_resolution_clock::now();
+    double sMin = 9999, sMax = 0, sSum = 0, sStd = 0;
+    for (double val : rtts) {
+        if (val < sMin) sMin = val;
+    }
+    for (double val : rtts) {
+        if (val > sMax) sMax = val;
+    }
+    for (double val : rtts) {
+        sSum += val;
+    }
+    double sAvg = sSum / statsCount;
+    double sqDiff = 0;
+    for (double val : rtts) sqDiff += (val - sAvg) * (val - sAvg);
+    sStd = std::sqrt(sqDiff / statsCount);
+    auto ts2 = std::chrono::high_resolution_clock::now();
+    (void)sMin; (void)sMax; (void)sStd;
+    double scalarStatsUs = std::chrono::duration<double, std::micro>(ts2 - ts1).count();
+
+    // SIMD stats (1 single pass)
+    auto tv1 = std::chrono::high_resolution_clock::now();
+    double vMin = 0, vMax = 0, vAvg = 0, vStd = 0;
+    asm_calc_ping_stats_simd(rtts.data(), statsCount, &vMin, &vMax, &vAvg, &vStd);
+    auto tv2 = std::chrono::high_resolution_clock::now();
+    double simdStatsUs = std::chrono::duration<double, std::micro>(tv2 - tv1).count();
+    if (simdStatsUs < 0.001) simdStatsUs = 0.001;
+    statsSpeedup = scalarStatsUs / simdStatsUs;
+
+    // Benchmark QPC vs Fast Serialized RDTSC cost
+    uint64_t cyc1 = asm_read_tsc_fast_serialized();
     LARGE_INTEGER dummy;
     for (int i = 0; i < 100; ++i) {
         QueryPerformanceCounter(&dummy);
     }
-    uint64_t cyc2 = asm_read_tsc_serialized();
+    uint64_t cyc2 = asm_read_tsc_fast_serialized();
     qpcCyc = (cyc2 - cyc1) / 100;
 
-    uint64_t cyc3 = asm_read_tsc_serialized();
+    uint64_t cyc3 = asm_read_tsc_fast_serialized();
     for (int i = 0; i < 100; ++i) {
-        volatile uint64_t val = asm_read_tsc_serialized();
+        volatile uint64_t val = asm_read_tsc_fast_serialized();
         (void)val;
     }
-    uint64_t cyc4 = asm_read_tsc_serialized();
+    uint64_t cyc4 = asm_read_tsc_fast_serialized();
     rdtscCyc = (cyc4 - cyc3) / 100;
 }
 
@@ -155,6 +213,9 @@ BenchmarkMetrics BenchmarkRunner::MeasureMetrics(const std::string& pingTarget) 
         m.scalarChecksumThroughputMBs,
         m.asmChecksumThroughputMBs,
         m.asmSpeedupFactor,
+        m.crc32ThroughputMBs,
+        m.memzeroThroughputGBs,
+        m.simdStatsSpeedup,
         m.qpcCycles,
         m.rdtscCycles
     );
@@ -338,6 +399,33 @@ void BenchmarkRunner::PrintComparisonTable(const BenchmarkMetrics& before, const
         s2 << before.rdtscCycles << " тактов CPU (RDTSC)";
         diff << UIConsole::BrightGreen() << "Минимальный overhead" << UIConsole::Reset();
         PrintRow("Стоимость чтения таймера", s1.str(), s2.str(), diff.str());
+    }
+
+    // 13. Hardware CRC32-C Engine
+    {
+        std::stringstream s1, s2, diff;
+        s1 << "Программный CRC";
+        s2 << std::fixed << std::setprecision(0) << after.crc32ThroughputMBs << " MB/s (Zen3)";
+        diff << UIConsole::BrightGreen() << "Аппаратная инструкция CPU" << UIConsole::Reset();
+        PrintRow("Аппаратный CRC32-C расчёт", s1.str(), s2.str(), diff.str());
+    }
+
+    // 14. AVX2 Non-Temporal Zero Engine
+    {
+        std::stringstream s1, s2, diff;
+        s1 << "Обычный memset";
+        s2 << std::fixed << std::setprecision(1) << after.memzeroThroughputGBs << " GB/s (AVX2)";
+        diff << UIConsole::BrightGreen() << "Без загрязнения кэша L1/L2" << UIConsole::Reset();
+        PrintRow("Очистка пакетов AVX2 Stream", s1.str(), s2.str(), diff.str());
+    }
+
+    // 15. SIMD Ping Statistics Engine
+    {
+        std::stringstream s1, s2, diff;
+        s1 << "4 скалярных прохода";
+        s2 << "1 SIMD проход";
+        diff << UIConsole::BrightGreen() << "+" << std::fixed << std::setprecision(1) << after.simdStatsSpeedup << "x быстрее" << UIConsole::Reset();
+        PrintRow("Расчёт статистики RTT в SIMD", s1.str(), s2.str(), diff.str());
     }
 
     std::cout << std::string(115, '=') << "\n\n";

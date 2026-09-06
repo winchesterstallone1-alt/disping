@@ -101,28 +101,22 @@ PingStats PingMonitor::RunContinuousMonitor(
             validRtts.push_back(rtt);
             stats.rttHistory.push_back(rtt);
 
-            if (rtt < stats.minRttMs) stats.minRttMs = rtt;
-            if (rtt > stats.maxRttMs) stats.maxRttMs = rtt;
-
-            // RFC 3550 Jitter calculation using assembly SIMD routine
+            // Update RFC 3550 Jitter using assembly SIMD routine
             if (previousRtt >= 0.0) {
                 double transitDiff = rtt - previousRtt;
                 stats.jitterMs = asm_calc_jitter_rfc3550(stats.jitterMs, transitDiff);
             }
             previousRtt = rtt;
 
-            // Update average
-            double sum = std::accumulate(validRtts.begin(), validRtts.end(), 0.0);
-            stats.avgRttMs = sum / validRtts.size();
-
-            // Calculate Standard Deviation
-            if (validRtts.size() > 1) {
-                double sqSum = 0.0;
-                for (double val : validRtts) {
-                    sqSum += (val - stats.avgRttMs) * (val - stats.avgRttMs);
-                }
-                stats.stdDevMs = std::sqrt(sqSum / validRtts.size());
-            }
+            // Single-pass SIMD statistics calculation: Min, Max, Average, StdDev
+            asm_calc_ping_stats_simd(
+                validRtts.data(),
+                validRtts.size(),
+                &stats.minRttMs,
+                &stats.maxRttMs,
+                &stats.avgRttMs,
+                &stats.stdDevMs
+            );
         } else {
             stats.lost++;
             stats.rttHistory.push_back(-1.0); // marker for lost packet

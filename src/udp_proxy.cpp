@@ -92,7 +92,8 @@ OperationResult UdpProxy::Start(
         DWORD timeout = 100;
         setsockopt(listenSock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout));
 
-        alignas(16) char packetBuffer[65536];
+        alignas(32) char packetBuffer[65536];
+        alignas(32) char relayBuffer[65536];
         sockaddr_in clientAddr;
         int clientLen = sizeof(clientAddr);
 
@@ -103,8 +104,11 @@ OperationResult UdpProxy::Start(
             if (received > 0) {
                 auto t1 = std::chrono::high_resolution_clock::now();
 
+                // Non-temporal SIMD copy avoiding L1/L2 cache pollution
+                asm_avx2_memcpy_nt(relayBuffer, packetBuffer, static_cast<size_t>(received));
+
                 // Forward immediately to remote game server
-                int sent = sendto(listenSock, packetBuffer, received, 0,
+                int sent = sendto(listenSock, relayBuffer, received, 0,
                                   (sockaddr*)&remoteAddr, sizeof(remoteAddr));
 
                 auto t2 = std::chrono::high_resolution_clock::now();
@@ -116,8 +120,8 @@ OperationResult UdpProxy::Start(
                     m_stats.avgForwardLatencyUs = (m_stats.avgForwardLatencyUs * 0.95) + (us * 0.05);
                 }
 
-                // Fast non-temporal clear of buffer using assembly
-                asm_fast_memzero_nt(packetBuffer, static_cast<size_t>(received));
+                // AVX2 non-temporal streaming clear of buffer
+                asm_avx2_memzero_nt(packetBuffer, static_cast<size_t>(received));
             }
         }
 
