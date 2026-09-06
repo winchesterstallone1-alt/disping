@@ -276,9 +276,39 @@ void VpnGuard::PrintVpnShieldStatus() {
         }
     }
 
+    // Check for mutual conflict: Zapret (winws/goodbyedpi) + VPN Tunnel (Incy/Happ/Sing-box)
+    bool hasZapret = false;
+    bool hasVpn = false;
+    for (const auto& p : report.detectedProcesses) {
+        std::string lp = p;
+        std::transform(lp.begin(), lp.end(), lp.begin(), ::tolower);
+        if (lp.find("winws") != std::string::npos || lp.find("goodbyedpi") != std::string::npos || lp.find("zapret") != std::string::npos) {
+            hasZapret = true;
+        }
+        if (lp.find("incy") != std::string::npos || lp.find("happ") != std::string::npos || lp.find("sing-box") != std::string::npos || lp.find("wireguard") != std::string::npos) {
+            hasVpn = true;
+        }
+    }
+    if (report.tunAdapterDetected) {
+        hasVpn = true;
+    }
+
+    if (hasZapret && hasVpn) {
+        std::cout << "\n" << UIConsole::Red() << UIConsole::Bold()
+                  << "  [!ВНИМАНИЕ! КРИТИЧЕСКИЙ КОНФЛИКТ В СИСТЕМЕ]\n" << UIConsole::Reset()
+                  << UIConsole::BrightYellow()
+                  << "  Одновременно запущены Zapret (winws.exe) И VPN-клиент (Incy / Happ)!\n"
+                  << "  * Почему ломается YouTube: Zapret расщепляет HTTPS-пакеты (hostfakesplit),\n"
+                  << "    а VPN шифрует эти искажённые пакеты и отправляет на сервер YouTube.\n"
+                  << "    Серверы Google отклоняют повреждённое TLS-рукопожатие (SSL Error 35: нет интернета).\n"
+                  << "  * РЕШЕНИЕ: Закройте Zapret (winws.exe), когда включен VPN (Incy/Happ)!\n"
+                  << "    Либо отключите VPN, если хотите использовать чистый Zapret.\n"
+                  << UIConsole::Reset() << "\n";
+    }
+
     std::cout << "\n" << UIConsole::BrightYellow()
               << "ГАРАНТИЯ БЕЗОПАСНОСТИ: DisPing не перезаписывает DNS прокси, не сбрасывает память WinDivert\n"
-              << "и не сбивает виртуальные адаптеры Wintun. Incy, Happ и Zapret работают стабильно и без сбоев!\n"
+              << "и не сбивает виртуальные адаптеры Wintun. Incy, Happ и Zapret защищены от конфликтов с оптимизатором!\n"
               << UIConsole::Reset() << "\n";
 }
 
