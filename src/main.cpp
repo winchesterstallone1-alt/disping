@@ -12,6 +12,7 @@
 #include "backup_manager.hpp"
 #include "registry_util.hpp"
 #include "disping_asm.h"
+#include "benchmark_runner.hpp"
 
 #include <iostream>
 #include <string>
@@ -173,6 +174,13 @@ int main(int argc, char* argv[]) {
             UIConsole::PrintHeader("Restoring Windows Defaults");
             auto r = backupMgr.RestoreFactoryDefaults();
             UIConsole::PrintOperationResult(r);
+            WSACleanup();
+            return 0;
+        }
+        else if (arg == "--compare" || arg == "--benchmark" || arg == "-c") {
+            std::string host = (argc > 2) ? argv[2] : "192.168.31.1";
+            BenchmarkRunner bench;
+            bench.RunComparisonBenchmark(host);
             WSACleanup();
             return 0;
         }
@@ -394,6 +402,14 @@ int main(int argc, char* argv[]) {
                 std::cout << "    -> RTT to 1.1.1.1: " << p << " ms [PASSED]\n";
 
                 std::cout << "\n" << UIConsole::BrightGreen() << "[OK] ALL CORE TESTS PASSED!" << UIConsole::Reset() << "\n";
+                std::cout << "\nPress any key to return to menu...";
+                _getch();
+                break;
+            }
+            case 'c':
+            case 'C': {
+                BenchmarkRunner bench;
+                bench.RunComparisonBenchmark("192.168.31.1");
                 std::cout << "\nPress any key to return to menu...";
                 _getch();
                 break;

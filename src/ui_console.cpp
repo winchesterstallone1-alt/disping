@@ -73,8 +73,9 @@ void UIConsole::PrintMenu() {
     std::cout << "   " << BrightYellow()<< "[B]" << Reset() << " Create System State Backup\n";
     std::cout << "   " << BrightYellow()<< "[R]" << Reset() << " Restore Original Windows Defaults (Safe Rollback)\n";
     std::cout << "   " << Magenta()     << "[T]" << Reset() << " Run Built-in Automated Verification Tests\n";
+    std::cout << "   " << BrightGreen() << "[C]" << Reset() << " Run Real-World Benchmark (Compare BEFORE vs AFTER)\n";
     std::cout << "   " << Red()         << "[Q]" << Reset() << " Exit disping\n\n";
-    std::cout << Bold() << "  Select an option [!/1-9/B/R/T/Q]: " << Reset() << std::flush;
+    std::cout << Bold() << "  Select an option [!/1-9/B/R/T/C/Q]: " << Reset() << std::flush;
 }
 
 void UIConsole::PrintHeader(const std::string& title) {

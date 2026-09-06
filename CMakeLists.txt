@@ -41,6 +41,7 @@ set(COMMON_SOURCES
     src/udp_proxy.cpp
     src/backup_manager.cpp
     src/ui_console.cpp
+    src/benchmark_runner.cpp
 )
 
 # Main Executable
